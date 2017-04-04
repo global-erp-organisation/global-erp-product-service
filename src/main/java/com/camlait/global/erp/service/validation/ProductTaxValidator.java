@@ -7,28 +7,28 @@ import org.springframework.stereotype.Component;
 
 import com.amazonaws.util.CollectionUtils;
 import com.amazonaws.util.StringUtils;
-import com.camlait.global.erp.delegate.document.DocumentManager;
 import com.camlait.global.erp.delegate.product.ProductManager;
+import com.camlait.global.erp.delegate.tax.TaxManager;
 import com.camlait.global.erp.domain.document.business.Tax;
 import com.camlait.global.erp.domain.product.Product;
-import com.camlait.global.erp.service.domain.ProductTaxes;
+import com.camlait.global.erp.service.domain.ProductTax;
 import com.camlait.global.erp.validation.Validator;
 import com.google.common.collect.Lists;
 
 @Component
-public class ProductTaxValidator implements Validator<ProductTaxes> {
+public class ProductTaxValidator implements Validator<ProductTax> {
 
     private final ProductManager productManager;
-    private final DocumentManager documentNanager;
+    private final TaxManager taxManager;
 
     @Autowired
-    public ProductTaxValidator(ProductManager productManager, DocumentManager documentNanager) {
+    public ProductTaxValidator(ProductManager productManager, TaxManager taxManager) {
         this.productManager = productManager;
-        this.documentNanager = documentNanager;
+        this.taxManager = taxManager;
     }
 
     @Override
-    public List<String> validate(ProductTaxes toValidate) {
+    public List<String> validate(ProductTax toValidate) {
         final List<String> errors = Lists.newArrayList();
         if (toValidate == null) {
             errors.add("The productTaxes object should not be null");
@@ -48,7 +48,7 @@ public class ProductTaxValidator implements Validator<ProductTaxes> {
                     if (StringUtils.isNullOrEmpty(c)) {
                         errors.add("A tax code should not be null or empty.");
                     } else {
-                        final Tax t = documentNanager.retrieveTaxByCode(c);
+                        final Tax t = taxManager.retrieveTaxByCode(c);
                         if (t == null) {
                             errors.add("No Tax related to the code " + c + " has been found");
                         }

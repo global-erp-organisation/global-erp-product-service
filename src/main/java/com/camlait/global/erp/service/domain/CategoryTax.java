@@ -11,12 +11,12 @@ import lombok.Data;
 @Data
 @Builder
 @AllArgsConstructor
-public class ProductTaxes {
+public class CategoryTax {
 
-    private String productCode;
+    private String categoryCode;
     private List<String> taxCodes = Lists.newArrayList();
 
-    public ProductTaxes() {
-
+    public CategoryTax() {
     }
+
 }

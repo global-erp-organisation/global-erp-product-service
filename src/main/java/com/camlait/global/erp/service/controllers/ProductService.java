@@ -1,9 +1,13 @@
 package com.camlait.global.erp.service.controllers;
 
+import static com.camlait.global.erp.domain.helper.SerializerHelper.toJson;
+
 import java.util.List;
 import java.util.stream.Collectors;
 
 import org.h2.util.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -16,16 +20,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.camlait.global.erp.delegate.document.DocumentManager;
 import com.camlait.global.erp.delegate.product.ProductManager;
-import com.camlait.global.erp.domain.document.business.Tax;
 import com.camlait.global.erp.domain.product.Product;
 import com.camlait.global.erp.domain.product.ProductCategory;
-import static com.camlait.global.erp.domain.util.SerializerUtil.toJson;
-
-import com.camlait.global.erp.service.domain.ProductTaxes;
-import com.camlait.global.erp.service.validation.ProductTaxValidator;
-import com.camlait.global.erp.service.validation.ProductValidator;
+import com.camlait.global.erp.service.validation.ProductModelValidator;
+import com.camlait.global.erp.validation.Validator;
 import com.google.common.base.Joiner;
 
 /**
@@ -37,20 +36,16 @@ import com.google.common.base.Joiner;
  */
 @RestController
 @RequestMapping(value = "global/v1/product")
-public class ProductController {
+public class ProductService {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(ProductService.class);
     private final ProductManager productManager;
-    private final ProductValidator productValidator;
-    private final ProductTaxValidator productTaxVaildator;
-    private final DocumentManager documentNanager;
+    private final Validator<Product> productValidator;
 
     @Autowired
-    public ProductController(ProductManager productManager, ProductValidator productValidator, ProductTaxValidator productTaxVaildator,
-                             DocumentManager documentNanager) {
+    public ProductService(ProductManager productManager, ProductModelValidator productValidator) {
         this.productManager = productManager;
         this.productValidator = productValidator;
-        this.productTaxVaildator = productTaxVaildator;
-        this.documentNanager = documentNanager;
     }
 
     /**
@@ -62,19 +57,24 @@ public class ProductController {
      */
     @RequestMapping(value = "category/{categoryCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.POST)
     public ResponseEntity<String> productAdd(@RequestBody Product product, @PathVariable String categoryCode) {
+        LOGGER.info("Product to add received. message = [{}]", product.toJson());
         if (StringUtils.isNullOrEmpty(categoryCode)) {
+            LOGGER.error("The product category code should not be null or empty.");
             return ResponseEntity.badRequest().body("The product category code should not be null or empty.");
         }
         final List<String> errors = productValidator.validate(product);
         if (!errors.isEmpty()) {
+            LOGGER.error("Bad request. errors = [{}]", Joiner.on('\n').join(errors));
             return ResponseEntity.badRequest().body(Joiner.on('\n').join(errors));
         }
         final ProductCategory c = productManager.retrieveProductCategoryByCode(categoryCode);
         if (c == null) {
+            LOGGER.error("No product category belongs to the category code " + categoryCode);
             return ResponseEntity.badRequest().body("No product category belongs to the category code " + categoryCode);
         }
         product.setCategory(c);
         final Product p = productManager.addProduct(product);
+        LOGGER.info("Product succesasfully added. message = [{}]", p.toJson());
         return ResponseEntity.ok(p.toJson());
     }
 
@@ -122,12 +122,12 @@ public class ProductController {
     }
 
     /**
-     * Retrieve a product from the catalog base on the given keyword.
+     * Retrieve products from the catalog base on the given keyword.
      * 
      * @param keyWord Keyword.
      * @param page Page number that need to be retrieved
      * @param size Number of items per page that need to be retrieved.
-     * @return The collection of product that match with provided conditions.
+     * @return The collection of products that match with provided conditions.
      */
     @RequestMapping(value = "/keyWord/{keyWord}/page/{page}/size/{size}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.GET)
     public ResponseEntity<String> productGetByKeyWord(@PathVariable String keyWord, @PathVariable int page, @PathVariable int size) {
@@ -172,26 +172,5 @@ public class ProductController {
         final Boolean result = productManager.removeProduct(p.getProductId());
         return result ? ResponseEntity.ok("The product " + p.getProductDescription() + " has been succesfully removed.")
                       : ResponseEntity.ok("The product " + p.getProductDescription() + " were not succesfully removed.");
-    }
-
-    /**
-     * Associate a list of taxes to a given product.
-     * 
-     * @param productTaxes Object that group a product code to a list of tax code..
-     * @return The product with associated taxes.
-     */
-    @RequestMapping(value = "/taxes", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.POST)
-    public ResponseEntity<String> productTaxAssociation(@RequestBody ProductTaxes productTaxes) {
-        final List<String> errors = productTaxVaildator.validate(productTaxes);
-        if (!errors.isEmpty()) {
-            return ResponseEntity.badRequest().body(Joiner.on('\n').join(errors));
-        }
-        final List<Tax> taxes = productTaxes.getTaxCodes().stream().map(c -> {
-            return documentNanager.retrieveTaxByCode(c);
-        }).collect(Collectors.toList());
-        Product p = productManager.retrieveProductByCode(productTaxes.getProductCode());
-        p.setTaxes(taxes);
-        p = productManager.updateProduct(p);
-        return ResponseEntity.ok(p.toJson());
     }
 }

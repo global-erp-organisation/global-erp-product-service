@@ -9,20 +9,21 @@ import org.springframework.stereotype.Component;
 import com.amazonaws.util.StringUtils;
 import com.camlait.global.erp.delegate.product.ProductManager;
 import com.camlait.global.erp.domain.product.Product;
+import com.camlait.global.erp.domain.product.ProductModel;
 import com.camlait.global.erp.validation.Validator;
 
 @Component
-public class ProductValidator implements Validator<Product> {
+public class ProductModelValidator implements Validator<ProductModel> {
 
     private final ProductManager productManager;
 
     @Autowired
-    public ProductValidator(ProductManager productManager) {
+    public ProductModelValidator(ProductManager productManager) {
         this.productManager = productManager;
     }
 
     @Override
-    public List<String> validate(Product toValidate) {
+    public List<String> validate(ProductModel toValidate) {
         final List<String> errors = Lists.newArrayList();
         if (toValidate == null) {
             errors.add("The product should not be null");

@@ -65,6 +65,11 @@
             <artifactId>global-erp-delagate</artifactId>
             <version>1.0</version>
         </dependency>
+        <dependency>
+            <groupId>global-erp</groupId>
+            <artifactId>global-erp-model</artifactId>
+            <version>1.0</version>
+        </dependency>
     </dependencies>
 
     <build>
