@@ -15,7 +15,7 @@ public class ProductTax {
 
     private String productCode;
     private List<String> taxCodes = Lists.newArrayList();
-
+    
     public ProductTax() {
 
     }

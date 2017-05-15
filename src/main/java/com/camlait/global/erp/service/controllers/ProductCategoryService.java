@@ -5,7 +5,6 @@ import static com.camlait.global.erp.domain.helper.SerializerHelper.toJson;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.h2.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,21 +13,23 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.amazonaws.util.StringUtils;
 import com.camlait.global.erp.delegate.product.ProductManager;
-import com.camlait.global.erp.domain.product.Product;
 import com.camlait.global.erp.domain.product.ProductCategory;
 import com.camlait.global.erp.domain.product.ProductCategoryModel;
 import com.camlait.global.erp.validation.Validator;
 import com.google.common.base.Joiner;
 
+@CrossOrigin
 @RestController
-@RequestMapping(value = "global/v1/category")
+@RequestMapping(value = "global/v1/categories/")
 public class ProductCategoryService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ProductCategoryService.class);
@@ -48,25 +49,27 @@ public class ProductCategoryService {
      * @param categoryCode Product category code.
      * @return
      */
-    @RequestMapping(value = "/{parentCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.POST)
-    public ResponseEntity<String> categoryAdd(@RequestBody ProductCategoryModel category, @PathVariable String parentCode) {
+    @RequestMapping(produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.POST)
+    public ResponseEntity<String> categoryAdd(@RequestBody ProductCategoryModel category) {
         LOGGER.info("Product category to add received. message = [{}]", category.toJson());
         final List<String> errors = categoryValidator.validate(category);
         if (!errors.isEmpty()) {
             LOGGER.error("Bad request. errors = [{}]", Joiner.on('\n').join(errors));
             return ResponseEntity.badRequest().body(Joiner.on('\n').join(errors));
         }
+        ProductCategory pc = null;
+        final String parentCode = category.getParentCategoryCode();
         if (!StringUtils.isNullOrEmpty(parentCode)) {
             final ProductCategory cp = productManager.retrieveProductCategoryByCode(parentCode);
             if (cp == null) {
                 return ResponseEntity.badRequest().body("The product category code " + parentCode + " does not exist.");
             }
-            category.addParent(ProductCategoryModel.from(cp));
+            pc = from(category).addParent(cp);
         }
 
-        final ProductCategory c = productManager.addProductCategory(category);
-        LOGGER.info("Product category successfully added. message = [{}]", c.toJson());
-        return ResponseEntity.ok(c.toJson());
+        pc = productManager.addProductCategory(pc);
+        LOGGER.info("Product category successfully added. message = [{}]", pc.toJson());
+        return ResponseEntity.ok(pc.toJson());
     }
 
     /**
@@ -76,17 +79,18 @@ public class ProductCategoryService {
      * @param categoryCode Target product category code that need to be updated.
      * @return the updated product category.
      */
-    @RequestMapping(value = "/{categoryCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.PUT)
-    public ResponseEntity<String> categoryUpdate(@RequestBody Product category, @PathVariable String categoryCode) {
+    @RequestMapping(value = "{categoryCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.PUT)
+    public ResponseEntity<String> categoryUpdate(@RequestBody ProductCategoryModel category, @PathVariable String categoryCode) {
         if (StringUtils.isNullOrEmpty(categoryCode)) {
             return ResponseEntity.badRequest().body("The target product category code should not be null or empty.");
         }
         final ProductCategory c = productManager.retrieveProductCategoryByCode(categoryCode);
         if (c == null) {
             return ResponseEntity.badRequest().body("The product category with the code " + categoryCode + " does not exist.");
-        }
-        final ProductCategory toUpdate = category.merge(c);
-        final List<String> errors = categoryValidator.validate(toUpdate);
+        } 
+         ProductCategory toUpdate = from(category).merge(c);
+        
+        final List<String> errors = categoryValidator.validate(ProductCategoryModel.fromCategory(toUpdate));
         if (!errors.isEmpty()) {
             return ResponseEntity.badRequest().body(Joiner.on('\n').join(errors));
         }
@@ -100,7 +104,7 @@ public class ProductCategoryService {
      * @param categoryCode Target product category code that need to be retrieved.
      * @return the product category that belongs to the provided code.
      */
-    @RequestMapping(value = "/{categoryCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.GET)
+    @RequestMapping(value = "{categoryCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.GET)
     public ResponseEntity<String> categoryGet(@PathVariable String categoryCode) {
         if (StringUtils.isNullOrEmpty(categoryCode)) {
             return ResponseEntity.badRequest().body("The target product category code should not be null or empty.");
@@ -121,7 +125,7 @@ public class ProductCategoryService {
      * @param size Number of items per page that need to be retrieved.
      * @return The collection of product categories that match with provided conditions.
      */
-    @RequestMapping(value = "/keyWord/{keyWord}/page/{page}/size/{size}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.GET)
+    @RequestMapping(value = "keyWord/{keyWord}/page/{page}/size/{size}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.GET)
     public ResponseEntity<String> categoryGetByKeyWord(@PathVariable String keyWord, @PathVariable int page, @PathVariable int size) {
         if (StringUtils.isNullOrEmpty(keyWord)) {
             return ResponseEntity.badRequest().body("The keyword should not be null or empty.");
@@ -152,7 +156,7 @@ public class ProductCategoryService {
      * @param categoryCode Target product category code that need to be deleted.
      * @return
      */
-    @RequestMapping(value = "/{categoryCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.DELETE)
+    @RequestMapping(value = "{categoryCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.DELETE)
     public ResponseEntity<String> categoryDelete(@PathVariable String categoryCode) {
         if (StringUtils.isNullOrEmpty(categoryCode)) {
             return ResponseEntity.badRequest().body("The target product category code should not be null or empty.");
@@ -165,5 +169,10 @@ public class ProductCategoryService {
         final Boolean result = productManager.removeProductCategory(c.getProductCategoryId());
         return result ? ResponseEntity.ok("The product " + c.getCategoryDescription() + " has been succesfully removed.")
                       : ResponseEntity.ok("The product " + c.getCategoryDescription() + " were not succesfully removed.");
+    }
+
+    private ProductCategory from(ProductCategoryModel model) {
+        return ProductCategory.builder().categoryDescription(model.getCategoryDescription()).productCategoryCode(model.getParentCategoryCode())
+                .scope(model.getScope()).stockFollowing(model.isStockFollowing()).taxableCategory(model.isTaxableCategory()).build();
     }
 }

@@ -5,7 +5,6 @@ import static com.camlait.global.erp.domain.helper.SerializerHelper.toJson;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.h2.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -13,34 +12,38 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.amazonaws.util.StringUtils;
 import com.camlait.global.erp.delegate.product.ProductManager;
 import com.camlait.global.erp.delegate.tax.TaxManager;
 import com.camlait.global.erp.domain.document.business.Tax;
 import com.camlait.global.erp.domain.product.Product;
 import com.camlait.global.erp.domain.product.ProductCategory;
+import com.camlait.global.erp.domain.product.TaxModel;
 import com.camlait.global.erp.service.domain.CategoryTax;
 import com.camlait.global.erp.service.domain.ProductTax;
 import com.camlait.global.erp.validation.Validator;
 import com.google.common.base.Joiner;
 
+@CrossOrigin
 @RestController
-@RequestMapping(value = "global/v1/tax")
+@RequestMapping(value = "global/v1/taxes/")
 public class TaxService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TaxService.class);
-    private final Validator<Tax> taxValidator;
+    private final Validator<TaxModel> taxValidator;
     private final TaxManager taxManager;
     private final Validator<CategoryTax> categoryTaxValidator;
     private final Validator<ProductTax> productTaxValidator;
     private final ProductManager productManager;
 
-    public TaxService(TaxManager taxManager, Validator<Tax> taxValidator, Validator<CategoryTax> categoryTaxValidator,
+    public TaxService(TaxManager taxManager, Validator<TaxModel> taxValidator, Validator<CategoryTax> categoryTaxValidator,
                       Validator<ProductTax> productTaxValidator, ProductManager productManager) {
         this.taxValidator = taxValidator;
         this.taxManager = taxManager;
@@ -56,14 +59,14 @@ public class TaxService {
      * @return
      */
     @RequestMapping(produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.POST)
-    public ResponseEntity<String> taxAdd(@RequestBody Tax tax) {
+    public ResponseEntity<String> taxAdd(@RequestBody TaxModel tax ) {
         LOGGER.info("Tax to add received. message = [{}]", tax.toJson());
         final List<String> errors = taxValidator.validate(tax);
         if (!errors.isEmpty()) {
             LOGGER.error("Bad request. errors = [{}]", Joiner.on('\n').join(errors));
             return ResponseEntity.badRequest().body(Joiner.on('\n').join(errors));
         }
-        final Tax t = taxManager.addTax(tax);
+        final Tax t = taxManager.addTax(TaxModel.fromTaxModel(tax));
         LOGGER.info("Tax successfully added. message = [{}]", t.toJson());
         return ResponseEntity.ok(t.toJson());
     }
@@ -75,8 +78,8 @@ public class TaxService {
      * @param taxCode Target tax code that need to be updated.
      * @return the updated tax.
      */
-    @RequestMapping(value = "/{taxCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.PUT)
-    public ResponseEntity<String> taxUpdate(@RequestBody Product tax, @PathVariable String taxCode) {
+    @RequestMapping(value = "/{taxCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.PATCH)
+    public ResponseEntity<String> taxUpdate(@RequestBody TaxModel tax, @PathVariable String taxCode) {
         if (StringUtils.isNullOrEmpty(taxCode)) {
             return ResponseEntity.badRequest().body("The target tax code should not be null or empty.");
         }
@@ -84,13 +87,15 @@ public class TaxService {
         if (t == null) {
             return ResponseEntity.badRequest().body("The tax with the code " + taxCode + " does not exist.");
         }
-        Tax toUpdate = tax.merge(t);
+        TaxModel toUpdate = tax.merge(TaxModel.fromTax(t));
         final List<String> errors = taxValidator.validate(toUpdate);
         if (!errors.isEmpty()) {
             return ResponseEntity.badRequest().body(Joiner.on('\n').join(errors));
         }
-        toUpdate = taxManager.updateTax(toUpdate);
-        return ResponseEntity.ok(toUpdate.toJson());
+        Tax updated = TaxModel.fromTaxModel(tax);
+        updated = updated.merge(t);
+        updated = taxManager.updateTax(updated);
+        return ResponseEntity.ok(updated.toJson());
     }
 
     /**

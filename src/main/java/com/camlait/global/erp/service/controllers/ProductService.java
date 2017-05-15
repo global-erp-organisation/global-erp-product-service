@@ -5,7 +5,6 @@ import static com.camlait.global.erp.domain.helper.SerializerHelper.toJson;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.h2.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,16 +13,18 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.amazonaws.util.StringUtils;
 import com.camlait.global.erp.delegate.product.ProductManager;
 import com.camlait.global.erp.domain.product.Product;
 import com.camlait.global.erp.domain.product.ProductCategory;
-import com.camlait.global.erp.service.validation.ProductModelValidator;
+import com.camlait.global.erp.domain.product.ProductModel;
 import com.camlait.global.erp.validation.Validator;
 import com.google.common.base.Joiner;
 
@@ -34,16 +35,17 @@ import com.google.common.base.Joiner;
  * 
  * @author Martin Blaise Signe.
  */
+@CrossOrigin
 @RestController
-@RequestMapping(value = "global/v1/product")
+@RequestMapping(value = "global/v1/products/")
 public class ProductService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ProductService.class);
     private final ProductManager productManager;
-    private final Validator<Product> productValidator;
+    private final Validator<ProductModel> productValidator;
 
     @Autowired
-    public ProductService(ProductManager productManager, ProductModelValidator productValidator) {
+    public ProductService(ProductManager productManager, Validator<ProductModel> productValidator) {
         this.productManager = productManager;
         this.productValidator = productValidator;
     }
@@ -56,7 +58,7 @@ public class ProductService {
      * @return
      */
     @RequestMapping(value = "category/{categoryCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.POST)
-    public ResponseEntity<String> productAdd(@RequestBody Product product, @PathVariable String categoryCode) {
+    public ResponseEntity<String> productAdd(@RequestBody ProductModel product, @PathVariable String categoryCode) {
         LOGGER.info("Product to add received. message = [{}]", product.toJson());
         if (StringUtils.isNullOrEmpty(categoryCode)) {
             LOGGER.error("The product category code should not be null or empty.");
@@ -72,8 +74,9 @@ public class ProductService {
             LOGGER.error("No product category belongs to the category code " + categoryCode);
             return ResponseEntity.badRequest().body("No product category belongs to the category code " + categoryCode);
         }
-        product.setCategory(c);
-        final Product p = productManager.addProduct(product);
+        Product p = ProductModel.fromProductModel(product);
+        p.setCategory(c);
+        p = productManager.addProduct(p);
         LOGGER.info("Product succesasfully added. message = [{}]", p.toJson());
         return ResponseEntity.ok(p.toJson());
     }
@@ -85,8 +88,8 @@ public class ProductService {
      * @param productCode Target product code that need to be updated.
      * @return the updated product.
      */
-    @RequestMapping(value = "/{productCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.PUT)
-    public ResponseEntity<String> productUpdate(@RequestBody Product product, @PathVariable String productCode) {
+    @RequestMapping(value = "{productCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.PUT)
+    public ResponseEntity<String> productUpdate(@RequestBody ProductModel product, @PathVariable String productCode) {
         if (StringUtils.isNullOrEmpty(productCode)) {
             return ResponseEntity.badRequest().body("The target product code should not be null or empty.");
         }
@@ -94,8 +97,8 @@ public class ProductService {
         if (p == null) {
             return ResponseEntity.badRequest().body("The product with the code " + productCode + " does not exist.");
         }
-        final Product toUpdate = product.merge(p);
-        final List<String> errors = productValidator.validate(toUpdate);
+        final Product toUpdate = ProductModel.fromProductModel(product).merge(p);
+        final List<String> errors = productValidator.validate(ProductModel.fromProduct(toUpdate));
         if (!errors.isEmpty()) {
             return ResponseEntity.badRequest().body(Joiner.on('\n').join(errors));
         }
@@ -109,7 +112,7 @@ public class ProductService {
      * @param productCode Target product code that need to be retrieved.
      * @return the product that belongs to the provided code.
      */
-    @RequestMapping(value = "/{productCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.GET)
+    @RequestMapping(value = "{productCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.GET)
     public ResponseEntity<String> productGet(@PathVariable String productCode) {
         if (StringUtils.isNullOrEmpty(productCode)) {
             return ResponseEntity.badRequest().body("The target product code should not be null or empty.");
@@ -129,7 +132,7 @@ public class ProductService {
      * @param size Number of items per page that need to be retrieved.
      * @return The collection of products that match with provided conditions.
      */
-    @RequestMapping(value = "/keyWord/{keyWord}/page/{page}/size/{size}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.GET)
+    @RequestMapping(value = "keyWord/{keyWord}/page/{page}/size/{size}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.GET)
     public ResponseEntity<String> productGetByKeyWord(@PathVariable String keyWord, @PathVariable int page, @PathVariable int size) {
         if (StringUtils.isNullOrEmpty(keyWord)) {
             return ResponseEntity.badRequest().body("The keyword should not be null or empty.");
@@ -160,7 +163,7 @@ public class ProductService {
      * @param productCode Target product code that need to be deleted.
      * @return
      */
-    @RequestMapping(value = "/{productCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.DELETE)
+    @RequestMapping(value = "{productCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.DELETE)
     public ResponseEntity<String> productDelete(@PathVariable String productCode) {
         if (StringUtils.isNullOrEmpty(productCode)) {
             return ResponseEntity.badRequest().body("The target product code should not be null or empty.");
