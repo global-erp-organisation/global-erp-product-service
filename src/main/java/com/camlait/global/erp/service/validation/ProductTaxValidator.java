@@ -1,6 +1,7 @@
 package com.camlait.global.erp.service.validation;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -13,10 +14,11 @@ import com.camlait.global.erp.domain.document.business.Tax;
 import com.camlait.global.erp.domain.product.Product;
 import com.camlait.global.erp.service.domain.ProductTax;
 import com.camlait.global.erp.validation.Validator;
+import com.camlait.global.erp.validation.ValidatorResult;
 import com.google.common.collect.Lists;
 
 @Component
-public class ProductTaxValidator implements Validator<ProductTax> {
+public class ProductTaxValidator implements Validator<ProductTax, Product> {
 
     private final ProductManager productManager;
     private final TaxManager taxManager;
@@ -28,7 +30,7 @@ public class ProductTaxValidator implements Validator<ProductTax> {
     }
 
     @Override
-    public List<String> validate(ProductTax toValidate) {
+    public ValidatorResult<Product> validate(ProductTax toValidate) {
         final List<String> errors = Lists.newArrayList();
         if (toValidate == null) {
             errors.add("The productTaxes object should not be null");
@@ -56,6 +58,22 @@ public class ProductTaxValidator implements Validator<ProductTax> {
                 });
             }
         }
-        return errors;
+        if (errors.isEmpty()) {
+            final List<Tax> taxes = toValidate.getTaxCodes().stream().map(c -> {
+                return taxManager.retrieveTaxByCode(c);
+            }).collect(Collectors.toList());
+            Product p = productManager.retrieveProductByCode(toValidate.getProductCode());
+            p.addProductToTax(taxes);
+            return build(errors, p);
+        }
+        return build(errors, null);
+    }
+
+    @Override
+    public ValidatorResult<Product> build(List<String> errors, Product result) {
+        final ValidatorResult<Product> vr = new ValidatorResult<Product>();
+        vr.setErrors(errors);
+        vr.setResult(result);
+        return vr;
     }
 }

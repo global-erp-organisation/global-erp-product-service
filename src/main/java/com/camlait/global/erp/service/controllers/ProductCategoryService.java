@@ -23,8 +23,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.amazonaws.util.StringUtils;
 import com.camlait.global.erp.delegate.product.ProductManager;
 import com.camlait.global.erp.domain.product.ProductCategory;
-import com.camlait.global.erp.domain.product.ProductCategoryModel;
 import com.camlait.global.erp.validation.Validator;
+import com.camlait.global.erp.validation.ValidatorResult;
 import com.google.common.base.Joiner;
 
 @CrossOrigin
@@ -34,10 +34,10 @@ public class ProductCategoryService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ProductCategoryService.class);
     private final ProductManager productManager;
-    private final Validator<ProductCategoryModel> categoryValidator;
+    private final Validator<ProductCategory, ProductCategory> categoryValidator;
 
     @Autowired
-    public ProductCategoryService(ProductManager productManager, Validator<ProductCategoryModel> categoryValidator) {
+    public ProductCategoryService(ProductManager productManager, Validator<ProductCategory, ProductCategory> categoryValidator) {
         this.productManager = productManager;
         this.categoryValidator = categoryValidator;
     }
@@ -50,24 +50,24 @@ public class ProductCategoryService {
      * @return
      */
     @RequestMapping(produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.POST)
-    public ResponseEntity<String> categoryAdd(@RequestBody ProductCategoryModel category) {
+    public ResponseEntity<String> categoryAdd(@RequestBody ProductCategory category) {
         LOGGER.info("Product category to add received. message = [{}]", category.toJson());
-        final List<String> errors = categoryValidator.validate(category);
+        final ValidatorResult<ProductCategory> result = categoryValidator.validate(category);
+        final List<String> errors = result.getErrors();
+
         if (!errors.isEmpty()) {
             LOGGER.error("Bad request. errors = [{}]", Joiner.on('\n').join(errors));
             return ResponseEntity.badRequest().body(Joiner.on('\n').join(errors));
         }
-        ProductCategory pc = null;
-        final String parentCode = category.getParentCategoryCode();
-        if (!StringUtils.isNullOrEmpty(parentCode)) {
-            final ProductCategory cp = productManager.retrieveProductCategoryByCode(parentCode);
+        final String parentId = category.getParentCategoryId();
+        if (!StringUtils.isNullOrEmpty(parentId)) {
+            final ProductCategory cp = productManager.retrieveProductCategory(parentId);
             if (cp == null) {
-                return ResponseEntity.badRequest().body("The product category code " + parentCode + " does not exist.");
+                return ResponseEntity.badRequest().body("The product category code " + parentId + " does not exist.");
             }
-            pc = from(category).addParent(cp);
+            category.addParent(cp);
         }
-
-        pc = productManager.addProductCategory(pc);
+        final ProductCategory pc = productManager.addProductCategory(category);
         LOGGER.info("Product category successfully added. message = [{}]", pc.toJson());
         return ResponseEntity.ok(pc.toJson());
     }
@@ -80,17 +80,19 @@ public class ProductCategoryService {
      * @return the updated product category.
      */
     @RequestMapping(value = "{categoryCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.PUT)
-    public ResponseEntity<String> categoryUpdate(@RequestBody ProductCategoryModel category, @PathVariable String categoryCode) {
+    public ResponseEntity<String> categoryUpdate(@RequestBody ProductCategory category, @PathVariable String categoryCode) {
         if (StringUtils.isNullOrEmpty(categoryCode)) {
             return ResponseEntity.badRequest().body("The target product category code should not be null or empty.");
         }
         final ProductCategory c = productManager.retrieveProductCategoryByCode(categoryCode);
         if (c == null) {
             return ResponseEntity.badRequest().body("The product category with the code " + categoryCode + " does not exist.");
-        } 
-         ProductCategory toUpdate = from(category).merge(c);
-        
-        final List<String> errors = categoryValidator.validate(ProductCategoryModel.fromCategory(toUpdate));
+        }
+        ProductCategory toUpdate = category.merge(c);
+
+        final ValidatorResult<ProductCategory> result = categoryValidator.validate(toUpdate);
+        final List<String> errors = result.getErrors();
+
         if (!errors.isEmpty()) {
             return ResponseEntity.badRequest().body(Joiner.on('\n').join(errors));
         }
@@ -114,7 +116,7 @@ public class ProductCategoryService {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body("The product category with the code " + categoryCode + " does not exist in the catalog.");
         }
-        return ResponseEntity.ok(c.toJson());
+        return ResponseEntity.ok(c.init().toJson());
     }
 
     /**
@@ -169,10 +171,5 @@ public class ProductCategoryService {
         final Boolean result = productManager.removeProductCategory(c.getProductCategoryId());
         return result ? ResponseEntity.ok("The product " + c.getCategoryDescription() + " has been succesfully removed.")
                       : ResponseEntity.ok("The product " + c.getCategoryDescription() + " were not succesfully removed.");
-    }
-
-    private ProductCategory from(ProductCategoryModel model) {
-        return ProductCategory.builder().categoryDescription(model.getCategoryDescription()).productCategoryCode(model.getParentCategoryCode())
-                .scope(model.getScope()).stockFollowing(model.isStockFollowing()).taxableCategory(model.isTaxableCategory()).build();
     }
 }

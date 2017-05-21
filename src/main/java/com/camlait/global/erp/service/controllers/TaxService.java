@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
@@ -25,10 +26,10 @@ import com.camlait.global.erp.delegate.tax.TaxManager;
 import com.camlait.global.erp.domain.document.business.Tax;
 import com.camlait.global.erp.domain.product.Product;
 import com.camlait.global.erp.domain.product.ProductCategory;
-import com.camlait.global.erp.domain.product.TaxModel;
 import com.camlait.global.erp.service.domain.CategoryTax;
 import com.camlait.global.erp.service.domain.ProductTax;
 import com.camlait.global.erp.validation.Validator;
+import com.camlait.global.erp.validation.ValidatorResult;
 import com.google.common.base.Joiner;
 
 @CrossOrigin
@@ -37,14 +38,15 @@ import com.google.common.base.Joiner;
 public class TaxService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TaxService.class);
-    private final Validator<TaxModel> taxValidator;
+    private final Validator<Tax, Tax> taxValidator;
     private final TaxManager taxManager;
-    private final Validator<CategoryTax> categoryTaxValidator;
-    private final Validator<ProductTax> productTaxValidator;
+    private final Validator<CategoryTax, ProductCategory> categoryTaxValidator;
+    private final Validator<ProductTax, Product> productTaxValidator;
     private final ProductManager productManager;
 
-    public TaxService(TaxManager taxManager, Validator<TaxModel> taxValidator, Validator<CategoryTax> categoryTaxValidator,
-                      Validator<ProductTax> productTaxValidator, ProductManager productManager) {
+    @Autowired
+    public TaxService(TaxManager taxManager, Validator<Tax, Tax> taxValidator, Validator<CategoryTax, ProductCategory> categoryTaxValidator,
+                      Validator<ProductTax, Product> productTaxValidator, ProductManager productManager) {
         this.taxValidator = taxValidator;
         this.taxManager = taxManager;
         this.categoryTaxValidator = categoryTaxValidator;
@@ -59,14 +61,15 @@ public class TaxService {
      * @return
      */
     @RequestMapping(produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.POST)
-    public ResponseEntity<String> taxAdd(@RequestBody TaxModel tax ) {
+    public ResponseEntity<String> taxAdd(@RequestBody Tax tax) {
         LOGGER.info("Tax to add received. message = [{}]", tax.toJson());
-        final List<String> errors = taxValidator.validate(tax);
+        final ValidatorResult<Tax> result = taxValidator.validate(tax);
+        final List<String> errors = result.getErrors();
         if (!errors.isEmpty()) {
             LOGGER.error("Bad request. errors = [{}]", Joiner.on('\n').join(errors));
             return ResponseEntity.badRequest().body(Joiner.on('\n').join(errors));
         }
-        final Tax t = taxManager.addTax(TaxModel.fromTaxModel(tax));
+        final Tax t = taxManager.addTax(result.getResult());
         LOGGER.info("Tax successfully added. message = [{}]", t.toJson());
         return ResponseEntity.ok(t.toJson());
     }
@@ -79,7 +82,7 @@ public class TaxService {
      * @return the updated tax.
      */
     @RequestMapping(value = "/{taxCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.PATCH)
-    public ResponseEntity<String> taxUpdate(@RequestBody TaxModel tax, @PathVariable String taxCode) {
+    public ResponseEntity<String> taxUpdate(@RequestBody Tax tax, @PathVariable String taxCode) {
         if (StringUtils.isNullOrEmpty(taxCode)) {
             return ResponseEntity.badRequest().body("The target tax code should not be null or empty.");
         }
@@ -87,15 +90,14 @@ public class TaxService {
         if (t == null) {
             return ResponseEntity.badRequest().body("The tax with the code " + taxCode + " does not exist.");
         }
-        TaxModel toUpdate = tax.merge(TaxModel.fromTax(t));
-        final List<String> errors = taxValidator.validate(toUpdate);
+        Tax toUpdate = tax.merge(t);
+        final ValidatorResult<Tax> result = taxValidator.validate(toUpdate);
+        final List<String> errors = result.getErrors();
         if (!errors.isEmpty()) {
             return ResponseEntity.badRequest().body(Joiner.on('\n').join(errors));
         }
-        Tax updated = TaxModel.fromTaxModel(tax);
-        updated = updated.merge(t);
-        updated = taxManager.updateTax(updated);
-        return ResponseEntity.ok(updated.toJson());
+        toUpdate = taxManager.updateTax(result.getResult());
+        return ResponseEntity.ok(toUpdate.toJson());
     }
 
     /**
@@ -141,7 +143,8 @@ public class TaxService {
      */
     @RequestMapping(value = "/category", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.POST)
     public ResponseEntity<String> categoryTaxAssociation(@RequestBody CategoryTax categoryTax) {
-        final List<String> errors = categoryTaxValidator.validate(categoryTax);
+        final ValidatorResult<ProductCategory> result = categoryTaxValidator.validate(categoryTax);
+        final List<String> errors = result.getErrors();
         if (!errors.isEmpty()) {
             return ResponseEntity.badRequest().body(Joiner.on('\n').join(errors));
         }
@@ -149,7 +152,7 @@ public class TaxService {
             return taxManager.retrieveTaxByCode(t);
         }).collect(Collectors.toList());
         ProductCategory c = productManager.retrieveProductCategoryByCode(categoryTax.getCategoryCode());
-        c.setTaxes(taxes);
+        c.addCategoryToTax(taxes);
         c = productManager.updateProductCategory(c);
         return ResponseEntity.ok(c.toJson());
     }
@@ -162,16 +165,12 @@ public class TaxService {
      */
     @RequestMapping(value = "/product", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.POST)
     public ResponseEntity<String> productTaxAssociation(@RequestBody ProductTax productTaxes) {
-        final List<String> errors = productTaxValidator.validate(productTaxes);
+        final ValidatorResult<Product> result = productTaxValidator.validate(productTaxes);
+        final List<String> errors = result.getErrors();
         if (!errors.isEmpty()) {
             return ResponseEntity.badRequest().body(Joiner.on('\n').join(errors));
         }
-        final List<Tax> taxes = productTaxes.getTaxCodes().stream().map(c -> {
-            return taxManager.retrieveTaxByCode(c);
-        }).collect(Collectors.toList());
-        Product p = productManager.retrieveProductByCode(productTaxes.getProductCode());
-        p.setTaxes(taxes);
-        p = productManager.updateProduct(p);
+        final Product p = productManager.updateProduct(result.getResult());
         return ResponseEntity.ok(p.toJson());
     }
 

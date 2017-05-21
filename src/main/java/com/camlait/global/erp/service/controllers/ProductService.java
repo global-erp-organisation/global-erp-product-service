@@ -24,8 +24,8 @@ import com.amazonaws.util.StringUtils;
 import com.camlait.global.erp.delegate.product.ProductManager;
 import com.camlait.global.erp.domain.product.Product;
 import com.camlait.global.erp.domain.product.ProductCategory;
-import com.camlait.global.erp.domain.product.ProductModel;
 import com.camlait.global.erp.validation.Validator;
+import com.camlait.global.erp.validation.ValidatorResult;
 import com.google.common.base.Joiner;
 
 /**
@@ -42,10 +42,10 @@ public class ProductService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ProductService.class);
     private final ProductManager productManager;
-    private final Validator<ProductModel> productValidator;
+    private final Validator<Product, Product> productValidator;
 
     @Autowired
-    public ProductService(ProductManager productManager, Validator<ProductModel> productValidator) {
+    public ProductService(ProductManager productManager, Validator<Product, Product> productValidator) {
         this.productManager = productManager;
         this.productValidator = productValidator;
     }
@@ -58,13 +58,14 @@ public class ProductService {
      * @return
      */
     @RequestMapping(value = "category/{categoryCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.POST)
-    public ResponseEntity<String> productAdd(@RequestBody ProductModel product, @PathVariable String categoryCode) {
+    public ResponseEntity<String> productAdd(@RequestBody Product product, @PathVariable String categoryCode) {
         LOGGER.info("Product to add received. message = [{}]", product.toJson());
         if (StringUtils.isNullOrEmpty(categoryCode)) {
             LOGGER.error("The product category code should not be null or empty.");
             return ResponseEntity.badRequest().body("The product category code should not be null or empty.");
         }
-        final List<String> errors = productValidator.validate(product);
+        final ValidatorResult<Product> result = productValidator.validate(product);
+        final List<String> errors = result.getErrors();
         if (!errors.isEmpty()) {
             LOGGER.error("Bad request. errors = [{}]", Joiner.on('\n').join(errors));
             return ResponseEntity.badRequest().body(Joiner.on('\n').join(errors));
@@ -74,9 +75,8 @@ public class ProductService {
             LOGGER.error("No product category belongs to the category code " + categoryCode);
             return ResponseEntity.badRequest().body("No product category belongs to the category code " + categoryCode);
         }
-        Product p = ProductModel.fromProductModel(product);
-        p.setCategory(c);
-        p = productManager.addProduct(p);
+        product.setCategory(c);
+        final Product p  = productManager.addProduct(product);
         LOGGER.info("Product succesasfully added. message = [{}]", p.toJson());
         return ResponseEntity.ok(p.toJson());
     }
@@ -89,7 +89,7 @@ public class ProductService {
      * @return the updated product.
      */
     @RequestMapping(value = "{productCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.PUT)
-    public ResponseEntity<String> productUpdate(@RequestBody ProductModel product, @PathVariable String productCode) {
+    public ResponseEntity<String> productUpdate(@RequestBody Product product, @PathVariable String productCode) {
         if (StringUtils.isNullOrEmpty(productCode)) {
             return ResponseEntity.badRequest().body("The target product code should not be null or empty.");
         }
@@ -97,8 +97,9 @@ public class ProductService {
         if (p == null) {
             return ResponseEntity.badRequest().body("The product with the code " + productCode + " does not exist.");
         }
-        final Product toUpdate = ProductModel.fromProductModel(product).merge(p);
-        final List<String> errors = productValidator.validate(ProductModel.fromProduct(toUpdate));
+        final Product toUpdate = product.merge(p);
+        final ValidatorResult<Product> result = productValidator.validate(toUpdate);
+        final List<String> errors = result.getErrors();
         if (!errors.isEmpty()) {
             return ResponseEntity.badRequest().body(Joiner.on('\n').join(errors));
         }

@@ -14,6 +14,7 @@ import lombok.Data;
 public class ProductTax {
 
     private String productCode;
+    @Builder.Default
     private List<String> taxCodes = Lists.newArrayList();
     
     public ProductTax() {
