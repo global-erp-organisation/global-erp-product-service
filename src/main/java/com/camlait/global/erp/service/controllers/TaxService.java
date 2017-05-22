@@ -8,8 +8,6 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -61,8 +59,7 @@ public class TaxService {
      * @return
      */
     @RequestMapping(produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.POST)
-    public ResponseEntity<String> taxAdd(@RequestBody Tax tax) {
-        LOGGER.info("Tax to add received. message = [{}]", tax.toJson());
+    public ResponseEntity<String> taxAdd(@RequestBody Tax tax) {       
         final ValidatorResult<Tax> result = taxValidator.validate(tax);
         final List<String> errors = result.getErrors();
         if (!errors.isEmpty()) {
@@ -81,7 +78,7 @@ public class TaxService {
      * @param taxCode Target tax code that need to be updated.
      * @return the updated tax.
      */
-    @RequestMapping(value = "/{taxCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.PATCH)
+    @RequestMapping(value = "{taxCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.PATCH)
     public ResponseEntity<String> taxUpdate(@RequestBody Tax tax, @PathVariable String taxCode) {
         if (StringUtils.isNullOrEmpty(taxCode)) {
             return ResponseEntity.badRequest().body("The target tax code should not be null or empty.");
@@ -106,7 +103,7 @@ public class TaxService {
      * @param taxCode Target tax code that need to be retrieved.
      * @return the tax that belongs to the provided code.
      */
-    @RequestMapping(value = "/{taxCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.GET)
+    @RequestMapping(value = "{taxCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.GET)
     public ResponseEntity<String> taxGet(@PathVariable String taxCode) {
         if (StringUtils.isNullOrEmpty(taxCode)) {
             return ResponseEntity.badRequest().body("The target Tax code should not be null or empty.");
@@ -122,17 +119,12 @@ public class TaxService {
      * Retrieve taxes from the catalog base on the given keyword.
      * 
      * @param keyWord Keyword.
-     * @param page Page number that need to be retrieved
-     * @param size Number of items per page that need to be retrieved.
      * @return The collection of taxes that match with provided conditions.
      */
-    @RequestMapping(value = "/keyWord/{keyWord}/page/{page}/size/{size}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.GET)
-    public ResponseEntity<String> taxGetByKeyWord(@PathVariable String keyWord, @PathVariable int page, @PathVariable int size) {
-        if (StringUtils.isNullOrEmpty(keyWord)) {
-            return ResponseEntity.badRequest().body("The keyword should not be null or empty.");
-        }
-        final Page<Tax> t = taxManager.retrieveTaxes(keyWord, new PageRequest(page, size));
-        return ResponseEntity.ok(toJson(t.getContent()));
+    @RequestMapping(value = "keyWord", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.GET)
+    public ResponseEntity<String> taxGetByKeyWord(@PathVariable String keyWord) {
+        final List<Tax> t = taxManager.retrieveTaxes(keyWord);
+        return ResponseEntity.ok(toJson(t));
     }
 
     /**
@@ -141,7 +133,7 @@ public class TaxService {
      * @param categoryTax Object that group a product code to a list of tax code..
      * @return The product category with associated taxes.
      */
-    @RequestMapping(value = "/category", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.POST)
+    @RequestMapping(value = "category", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.POST)
     public ResponseEntity<String> categoryTaxAssociation(@RequestBody CategoryTax categoryTax) {
         final ValidatorResult<ProductCategory> result = categoryTaxValidator.validate(categoryTax);
         final List<String> errors = result.getErrors();
@@ -163,7 +155,7 @@ public class TaxService {
      * @param productTaxes Object that group a product code to a list of tax code..
      * @return The product with associated taxes.
      */
-    @RequestMapping(value = "/product", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.POST)
+    @RequestMapping(value = "product", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.POST)
     public ResponseEntity<String> productTaxAssociation(@RequestBody ProductTax productTaxes) {
         final ValidatorResult<Product> result = productTaxValidator.validate(productTaxes);
         final List<String> errors = result.getErrors();
@@ -180,7 +172,7 @@ public class TaxService {
      * @param taxCode Target product code that need to be deleted.
      * @return
      */
-    @RequestMapping(value = "/{taxCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.DELETE)
+    @RequestMapping(value = "{taxCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.DELETE)
     public ResponseEntity<String> taxDelete(@PathVariable String taxCode) {
         if (StringUtils.isNullOrEmpty(taxCode)) {
             return ResponseEntity.badRequest().body("The target tax code should not be null or empty.");

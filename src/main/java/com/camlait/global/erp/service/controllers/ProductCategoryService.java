@@ -8,8 +8,6 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -49,9 +47,16 @@ public class ProductCategoryService {
      * @param categoryCode Product category code.
      * @return
      */
-    @RequestMapping(produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.POST)
-    public ResponseEntity<String> categoryAdd(@RequestBody ProductCategory category) {
-        LOGGER.info("Product category to add received. message = [{}]", category.toJson());
+    @RequestMapping(value = "{parentCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.POST)
+    public ResponseEntity<String> categoryAdd(@RequestBody ProductCategory category, @PathVariable String parentCode) {
+        ProductCategory pc = null;
+        if (parentCode != null) {
+            pc = productManager.retrieveProductCategoryByCode(parentCode);
+            if (pc == null) {
+                LOGGER.error("The product category with code {} does not exist in the catalog.", parentCode);
+                return ResponseEntity.badRequest().body("The product category code with code " + parentCode + " does not exist in the catalog.");
+            }
+        }
         final ValidatorResult<ProductCategory> result = categoryValidator.validate(category);
         final List<String> errors = result.getErrors();
 
@@ -59,15 +64,8 @@ public class ProductCategoryService {
             LOGGER.error("Bad request. errors = [{}]", Joiner.on('\n').join(errors));
             return ResponseEntity.badRequest().body(Joiner.on('\n').join(errors));
         }
-        final String parentId = category.getParentCategoryId();
-        if (!StringUtils.isNullOrEmpty(parentId)) {
-            final ProductCategory cp = productManager.retrieveProductCategory(parentId);
-            if (cp == null) {
-                return ResponseEntity.badRequest().body("The product category code " + parentId + " does not exist.");
-            }
-            category.addParent(cp);
-        }
-        final ProductCategory pc = productManager.addProductCategory(category);
+        category.addParent(pc);
+        pc = productManager.addProductCategory(category);
         LOGGER.info("Product category successfully added. message = [{}]", pc.toJson());
         return ResponseEntity.ok(pc.toJson());
     }
@@ -123,17 +121,15 @@ public class ProductCategoryService {
      * Retrieve product categories from the catalog base on the given keyword.
      * 
      * @param keyWord Keyword.
-     * @param page Page number that need to be retrieved
-     * @param size Number of items per page that need to be retrieved.
      * @return The collection of product categories that match with provided conditions.
      */
-    @RequestMapping(value = "keyWord/{keyWord}/page/{page}/size/{size}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.GET)
-    public ResponseEntity<String> categoryGetByKeyWord(@PathVariable String keyWord, @PathVariable int page, @PathVariable int size) {
+    @RequestMapping(value = "keyWord", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.GET)
+    public ResponseEntity<String> categoryGetByKeyWord(@PathVariable String keyWord) {
         if (StringUtils.isNullOrEmpty(keyWord)) {
             return ResponseEntity.badRequest().body("The keyword should not be null or empty.");
         }
-        final Page<ProductCategory> p = productManager.retriveProductCategories(keyWord, new PageRequest(page, size));
-        return ResponseEntity.ok(toJson(p.getContent()));
+        final List<ProductCategory> p = productManager.retriveProductCategories(keyWord);
+        return ResponseEntity.ok(toJson(p));
     }
 
     /**
@@ -147,7 +143,7 @@ public class ProductCategoryService {
         if (StringUtils.isNullOrEmpty(parentCode)) {
             return ResponseEntity.badRequest().body("The target parent category code should not be null or empty.");
         }
-        final List<ProductCategory> categories = productManager.retriveProductCategories(null, null).getContent().stream()
+        final List<ProductCategory> categories = productManager.retriveProductCategories(null).stream()
                 .filter(c -> c.getParentCategory().getProductCategoryCode().equals(parentCode)).collect(Collectors.toList());
         return ResponseEntity.ok(toJson(categories));
     }

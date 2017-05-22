@@ -3,13 +3,10 @@ package com.camlait.global.erp.service.controllers;
 import static com.camlait.global.erp.domain.helper.SerializerHelper.toJson;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -59,25 +56,29 @@ public class ProductService {
      */
     @RequestMapping(value = "category/{categoryCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.POST)
     public ResponseEntity<String> productAdd(@RequestBody Product product, @PathVariable String categoryCode) {
-        LOGGER.info("Product to add received. message = [{}]", product.toJson());
         if (StringUtils.isNullOrEmpty(categoryCode)) {
             LOGGER.error("The product category code should not be null or empty.");
             return ResponseEntity.badRequest().body("The product category code should not be null or empty.");
         }
+        final Product exist = productManager.retrieveProductByCode(product.getProductCode());
+        if (exist != null) {
+            LOGGER.error("The product with the code {} already exist in the catalog.", product.getProductCode());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("The product with code " + product.getProductCode() + " already exist in the catalog.");
+        }
+        final ProductCategory cp = productManager.retrieveProductCategoryByCode(categoryCode);
+        if (cp == null) {
+            LOGGER.error("The product category code {} were not find in the catalog.", categoryCode);
+            return ResponseEntity.badRequest().body("The product category code " + categoryCode + " were not find in the catalog.");
+        }
+        product.setCategory(cp);
         final ValidatorResult<Product> result = productValidator.validate(product);
         final List<String> errors = result.getErrors();
         if (!errors.isEmpty()) {
             LOGGER.error("Bad request. errors = [{}]", Joiner.on('\n').join(errors));
             return ResponseEntity.badRequest().body(Joiner.on('\n').join(errors));
         }
-        final ProductCategory c = productManager.retrieveProductCategoryByCode(categoryCode);
-        if (c == null) {
-            LOGGER.error("No product category belongs to the category code " + categoryCode);
-            return ResponseEntity.badRequest().body("No product category belongs to the category code " + categoryCode);
-        }
-        product.setCategory(c);
-        final Product p  = productManager.addProduct(product);
-        LOGGER.info("Product succesasfully added. message = [{}]", p.toJson());
+        final Product p = productManager.addProduct(product);
+        LOGGER.info("Product successfully added. message = [{}]", p.toJson());
         return ResponseEntity.ok(p.toJson());
     }
 
@@ -91,19 +92,23 @@ public class ProductService {
     @RequestMapping(value = "{productCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.PUT)
     public ResponseEntity<String> productUpdate(@RequestBody Product product, @PathVariable String productCode) {
         if (StringUtils.isNullOrEmpty(productCode)) {
+            LOGGER.error("The target product code should not be null or empty.");
             return ResponseEntity.badRequest().body("The target product code should not be null or empty.");
         }
         final Product p = productManager.retrieveProductByCode(productCode);
         if (p == null) {
+            LOGGER.error("The product with code {} not found in the catalog.", productCode);
             return ResponseEntity.badRequest().body("The product with the code " + productCode + " does not exist.");
         }
         final Product toUpdate = product.merge(p);
         final ValidatorResult<Product> result = productValidator.validate(toUpdate);
         final List<String> errors = result.getErrors();
         if (!errors.isEmpty()) {
+            LOGGER.error("Bad request. errors = [{}]", Joiner.on('\n').join(errors));
             return ResponseEntity.badRequest().body(Joiner.on('\n').join(errors));
         }
         productManager.updateProduct(toUpdate);
+        LOGGER.info("Product successfully updated. message = [{}]", toUpdate.toJson());
         return ResponseEntity.ok(toUpdate.toJson());
     }
 
@@ -116,12 +121,15 @@ public class ProductService {
     @RequestMapping(value = "{productCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.GET)
     public ResponseEntity<String> productGet(@PathVariable String productCode) {
         if (StringUtils.isNullOrEmpty(productCode)) {
+            LOGGER.error("The product code should not be null or empty.");
             return ResponseEntity.badRequest().body("The target product code should not be null or empty.");
         }
         final Product p = productManager.retrieveProductByCode(productCode);
         if (p == null) {
+            LOGGER.error("The product with code {} not found in the catalog.", productCode);
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("The product with the code " + productCode + " does not exist in the catalog.");
         }
+        LOGGER.info("Product successfully retrieved. message = [{}]", p.toJson());
         return ResponseEntity.ok(p.toJson());
     }
 
@@ -129,17 +137,12 @@ public class ProductService {
      * Retrieve products from the catalog base on the given keyword.
      * 
      * @param keyWord Keyword.
-     * @param page Page number that need to be retrieved
-     * @param size Number of items per page that need to be retrieved.
      * @return The collection of products that match with provided conditions.
      */
-    @RequestMapping(value = "keyWord/{keyWord}/page/{page}/size/{size}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.GET)
-    public ResponseEntity<String> productGetByKeyWord(@PathVariable String keyWord, @PathVariable int page, @PathVariable int size) {
-        if (StringUtils.isNullOrEmpty(keyWord)) {
-            return ResponseEntity.badRequest().body("The keyword should not be null or empty.");
-        }
-        final Page<Product> p = productManager.retriveProducts(keyWord, new PageRequest(page, size));
-        return ResponseEntity.ok(toJson(p.getContent()));
+    @RequestMapping(value = "keyWord", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.GET)
+    public ResponseEntity<String> productGetByKeyWord(@PathVariable String keyWord) {
+        final List<Product> p = productManager.retriveProducts(keyWord);
+        return ResponseEntity.ok(toJson(p));
     }
 
     /**
@@ -153,8 +156,7 @@ public class ProductService {
         if (StringUtils.isNullOrEmpty(categoryCode)) {
             return ResponseEntity.badRequest().body("The target category product code should not be null or empty.");
         }
-        final List<Product> products = productManager.retriveProducts(null, null).getContent().stream()
-                .filter(p -> p.getCategory().getProductCategoryCode().equals(categoryCode)).collect(Collectors.toList());
+        final List<Product> products = productManager.retriveProductByCategory(categoryCode);
         return ResponseEntity.ok(toJson(products));
     }
 

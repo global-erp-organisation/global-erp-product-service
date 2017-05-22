@@ -3,6 +3,8 @@ package com.camlait.global.erp.service.validation;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -12,6 +14,7 @@ import com.camlait.global.erp.delegate.product.ProductManager;
 import com.camlait.global.erp.delegate.tax.TaxManager;
 import com.camlait.global.erp.domain.document.business.Tax;
 import com.camlait.global.erp.domain.product.Product;
+import com.camlait.global.erp.service.controllers.TaxService;
 import com.camlait.global.erp.service.domain.ProductTax;
 import com.camlait.global.erp.validation.Validator;
 import com.camlait.global.erp.validation.ValidatorResult;
@@ -20,6 +23,7 @@ import com.google.common.collect.Lists;
 @Component
 public class ProductTaxValidator implements Validator<ProductTax, Product> {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(TaxService.class);
     private final ProductManager productManager;
     private final TaxManager taxManager;
 
@@ -32,13 +36,15 @@ public class ProductTaxValidator implements Validator<ProductTax, Product> {
     @Override
     public ValidatorResult<Product> validate(ProductTax toValidate) {
         final List<String> errors = Lists.newArrayList();
+        Product p = null;
         if (toValidate == null) {
             errors.add("The productTaxes object should not be null");
         } else {
+            LOGGER.info("ProductTax to add received. message = [{}]", toValidate.toJson());
             if (StringUtils.isNullOrEmpty(toValidate.getProductCode())) {
                 errors.add("The product code should not be empty or null");
             } else {
-                final Product p = productManager.retrieveProductByCode(toValidate.getProductCode());
+                p = productManager.retrieveProductByCode(toValidate.getProductCode());
                 if (p == null) {
                     errors.add("No product belongs to the code " + toValidate.getProductCode() + " has been found.");
                 }
@@ -62,11 +68,9 @@ public class ProductTaxValidator implements Validator<ProductTax, Product> {
             final List<Tax> taxes = toValidate.getTaxCodes().stream().map(c -> {
                 return taxManager.retrieveTaxByCode(c);
             }).collect(Collectors.toList());
-            Product p = productManager.retrieveProductByCode(toValidate.getProductCode());
             p.addProductToTax(taxes);
-            return build(errors, p);
         }
-        return build(errors, null);
+        return build(errors, p);
     }
 
     @Override

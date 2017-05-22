@@ -2,24 +2,46 @@ package com.camlait.global.erp.service.validation;
 
 import java.util.List;
 
+import org.assertj.core.util.Lists;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import com.amazonaws.util.StringUtils;
 import com.camlait.global.erp.domain.product.ProductCategory;
+import com.camlait.global.erp.service.controllers.ProductCategoryService;
 import com.camlait.global.erp.validation.Validator;
 import com.camlait.global.erp.validation.ValidatorResult;
 
 @Component
 public class CategoryValidator implements Validator<ProductCategory, ProductCategory> {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(ProductCategoryService.class);
+
     @Override
     public ValidatorResult<ProductCategory> validate(ProductCategory toValidate) {
-        // TODO Auto-generated method stub
-        return null;
+        final List<String> errors = Lists.newArrayList();
+        if (toValidate == null) {
+            errors.add("The product category object should not be null.");
+        } else {
+            LOGGER.info("Product category to add received. message = [{}]", toValidate.toJson());
+            if (StringUtils.isNullOrEmpty(toValidate.getProductCategoryCode())) {
+                errors.add("The product category code should not be null or empty.");
+            }
+            if (StringUtils.isNullOrEmpty(toValidate.getCategoryDescription())) {
+                errors.add("The product category description should not be null or empty.");
+            }
+        }
+        return build(errors, toValidate);
     }
 
     @Override
     public ValidatorResult<ProductCategory> build(List<String> errors, ProductCategory result) {
-        // TODO Auto-generated method stub
-        return null;
+        final ValidatorResult<ProductCategory> vr = new ValidatorResult<ProductCategory>();
+        vr.setErrors(errors);
+        if (!errors.isEmpty()) {
+            vr.setResult(result);
+        }
+        return vr;
     }
 }
