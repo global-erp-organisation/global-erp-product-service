@@ -2,7 +2,6 @@ package com.camlait.global.erp.service.validation;
 
 import java.util.List;
 
-import org.assertj.core.util.Lists;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -12,6 +11,7 @@ import com.camlait.global.erp.domain.product.ProductCategory;
 import com.camlait.global.erp.service.controllers.ProductCategoryService;
 import com.camlait.global.erp.validation.Validator;
 import com.camlait.global.erp.validation.ValidatorResult;
+import com.google.common.collect.Lists;
 
 @Component
 public class CategoryValidator implements Validator<ProductCategory, ProductCategory> {
@@ -39,9 +39,7 @@ public class CategoryValidator implements Validator<ProductCategory, ProductCate
     public ValidatorResult<ProductCategory> build(List<String> errors, ProductCategory result) {
         final ValidatorResult<ProductCategory> vr = new ValidatorResult<ProductCategory>();
         vr.setErrors(errors);
-        if (!errors.isEmpty()) {
-            vr.setResult(result);
-        }
+        vr.setResult(result);
         return vr;
     }
 }

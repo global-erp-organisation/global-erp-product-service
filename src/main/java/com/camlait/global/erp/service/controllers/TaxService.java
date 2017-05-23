@@ -3,7 +3,6 @@ package com.camlait.global.erp.service.controllers;
 import static com.camlait.global.erp.domain.helper.SerializerHelper.toJson;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,7 +58,7 @@ public class TaxService {
      * @return
      */
     @RequestMapping(produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.POST)
-    public ResponseEntity<String> taxAdd(@RequestBody Tax tax) {       
+    public ResponseEntity<String> taxAdd(@RequestBody Tax tax) {
         final ValidatorResult<Tax> result = taxValidator.validate(tax);
         final List<String> errors = result.getErrors();
         if (!errors.isEmpty()) {
@@ -117,12 +116,17 @@ public class TaxService {
 
     /**
      * Retrieve taxes from the catalog base on the given keyword.
-     * 
      * @param keyWord Keyword.
+     * <p>
+     * The key word is required.
+     * </p>
      * @return The collection of taxes that match with provided conditions.
      */
-    @RequestMapping(value = "keyWord", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.GET)
+    @RequestMapping(value = "keyword/{keyWord}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.GET)
     public ResponseEntity<String> taxGetByKeyWord(@PathVariable String keyWord) {
+        if (StringUtils.isNullOrEmpty(keyWord)) {
+            return ResponseEntity.badRequest().body("The key word should not be null or empty.");
+        }
         final List<Tax> t = taxManager.retrieveTaxes(keyWord);
         return ResponseEntity.ok(toJson(t));
     }
@@ -140,12 +144,7 @@ public class TaxService {
         if (!errors.isEmpty()) {
             return ResponseEntity.badRequest().body(Joiner.on('\n').join(errors));
         }
-        final List<Tax> taxes = categoryTax.getTaxCodes().stream().map(t -> {
-            return taxManager.retrieveTaxByCode(t);
-        }).collect(Collectors.toList());
-        ProductCategory c = productManager.retrieveProductCategoryByCode(categoryTax.getCategoryCode());
-        c.addCategoryToTax(taxes);
-        c = productManager.updateProductCategory(c);
+        final ProductCategory c = productManager.updateProductCategory(result.getResult());
         return ResponseEntity.ok(c.toJson());
     }
 

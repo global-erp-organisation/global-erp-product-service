@@ -31,7 +31,7 @@ public class ProductValidator implements Validator<Product, Product> {
             if (StringUtils.isNullOrEmpty(toValidate.getProductDescription())) {
                 errors.add("The product description should not be null or empty");
             }
-            if (NumberUtils.isNumber(toValidate.getDefaultUnitprice().toString())) {
+            if (!NumberUtils.isNumber(toValidate.getDefaultUnitprice().toString())) {
                 errors.add("The default unit price should be a numeric.");
             }
         }

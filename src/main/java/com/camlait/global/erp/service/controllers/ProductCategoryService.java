@@ -3,7 +3,6 @@ package com.camlait.global.erp.service.controllers;
 import static com.camlait.global.erp.domain.helper.SerializerHelper.toJson;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,7 +49,7 @@ public class ProductCategoryService {
     @RequestMapping(value = "{parentCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.POST)
     public ResponseEntity<String> categoryAdd(@RequestBody ProductCategory category, @PathVariable String parentCode) {
         ProductCategory pc = null;
-        if (parentCode != null) {
+        if (parentCode != null && !parentCode.equals("null")) {
             pc = productManager.retrieveProductCategoryByCode(parentCode);
             if (pc == null) {
                 LOGGER.error("The product category with code {} does not exist in the catalog.", parentCode);
@@ -123,12 +122,12 @@ public class ProductCategoryService {
      * @param keyWord Keyword.
      * @return The collection of product categories that match with provided conditions.
      */
-    @RequestMapping(value = "keyWord", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.GET)
+    @RequestMapping(value = "keyword/{keyWord}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.GET)
     public ResponseEntity<String> categoryGetByKeyWord(@PathVariable String keyWord) {
         if (StringUtils.isNullOrEmpty(keyWord)) {
             return ResponseEntity.badRequest().body("The keyword should not be null or empty.");
         }
-        final List<ProductCategory> p = productManager.retriveProductCategories(keyWord);
+        final List<ProductCategory> p = productManager.retrieveProductCategories(keyWord);
         return ResponseEntity.ok(toJson(p));
     }
 
@@ -143,8 +142,7 @@ public class ProductCategoryService {
         if (StringUtils.isNullOrEmpty(parentCode)) {
             return ResponseEntity.badRequest().body("The target parent category code should not be null or empty.");
         }
-        final List<ProductCategory> categories = productManager.retriveProductCategories(null).stream()
-                .filter(c -> c.getParentCategory().getProductCategoryCode().equals(parentCode)).collect(Collectors.toList());
+        final List<ProductCategory> categories = productManager.retrieveCategoriesByParent(parentCode);
         return ResponseEntity.ok(toJson(categories));
     }
 

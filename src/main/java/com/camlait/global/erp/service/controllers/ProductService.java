@@ -139,9 +139,12 @@ public class ProductService {
      * @param keyWord Keyword.
      * @return The collection of products that match with provided conditions.
      */
-    @RequestMapping(value = "keyWord", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.GET)
+    @RequestMapping(value = "keyword/{keyWord}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.GET)
     public ResponseEntity<String> productGetByKeyWord(@PathVariable String keyWord) {
-        final List<Product> p = productManager.retriveProducts(keyWord);
+        if (StringUtils.isNullOrEmpty(keyWord)) {
+            return ResponseEntity.badRequest().body("The key word should not be null or empty.");
+        }
+        final List<Product> p = productManager.retrieveProducts(keyWord);
         return ResponseEntity.ok(toJson(p));
     }
 
@@ -156,7 +159,7 @@ public class ProductService {
         if (StringUtils.isNullOrEmpty(categoryCode)) {
             return ResponseEntity.badRequest().body("The target category product code should not be null or empty.");
         }
-        final List<Product> products = productManager.retriveProductByCategory(categoryCode);
+        final List<Product> products = productManager.retrieveProductByCategory(categoryCode);
         return ResponseEntity.ok(toJson(products));
     }
 
