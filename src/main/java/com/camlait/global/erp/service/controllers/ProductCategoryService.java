@@ -46,16 +46,8 @@ public class ProductCategoryService {
      * @param categoryCode Product category code.
      * @return
      */
-    @RequestMapping(value = "{parentCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.POST)
-    public ResponseEntity<String> categoryAdd(@RequestBody ProductCategory category, @PathVariable String parentCode) {
-        ProductCategory pc = null;
-        if (parentCode != null && !parentCode.equals("null")) {
-            pc = productManager.retrieveProductCategoryByCode(parentCode);
-            if (pc == null) {
-                LOGGER.error("The product category with code {} does not exist in the catalog.", parentCode);
-                return ResponseEntity.badRequest().body("The product category code with code " + parentCode + " does not exist in the catalog.");
-            }
-        }
+    @RequestMapping( produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.POST)
+    public ResponseEntity<String> categoryAdd(@RequestBody ProductCategory category) {
         final ValidatorResult<ProductCategory> result = categoryValidator.validate(category);
         final List<String> errors = result.getErrors();
 
@@ -63,8 +55,7 @@ public class ProductCategoryService {
             LOGGER.error("Bad request. errors = [{}]", Joiner.on('\n').join(errors));
             return ResponseEntity.badRequest().body(Joiner.on('\n').join(errors));
         }
-        category.addParent(pc);
-        pc = productManager.addProductCategory(category);
+        final ProductCategory pc = productManager.addProductCategory(category);
         LOGGER.info("Product category successfully added. message = [{}]", pc.toJson());
         return ResponseEntity.ok(pc.toJson());
     }

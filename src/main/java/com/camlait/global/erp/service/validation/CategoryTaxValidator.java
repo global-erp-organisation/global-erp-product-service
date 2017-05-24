@@ -67,7 +67,7 @@ public class CategoryTaxValidator implements Validator<CategoryTax, ProductCateg
                 final List<Tax> taxes = toValidate.getTaxCodes().stream().map(c -> {
                     return taxManager.retrieveTaxByCode(c);
                 }).collect(Collectors.toList());
-                pc.addCategoryToTax(taxes);
+                pc.getTaxes().addAll(taxes);
             }
         }
         return build(errors, pc);

@@ -68,7 +68,7 @@ public class ProductTaxValidator implements Validator<ProductTax, Product> {
             final List<Tax> taxes = toValidate.getTaxCodes().stream().map(c -> {
                 return taxManager.retrieveTaxByCode(c);
             }).collect(Collectors.toList());
-            p.addProductToTax(taxes);
+            p.getTaxes().addAll(taxes);
         }
         return build(errors, p);
     }
