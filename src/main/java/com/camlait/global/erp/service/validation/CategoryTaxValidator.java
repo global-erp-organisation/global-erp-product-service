@@ -44,7 +44,7 @@ public class CategoryTaxValidator implements Validator<CategoryTax, ProductCateg
             if (StringUtils.isNullOrEmpty(toValidate.getCategoryCode())) {
                 errors.add("The product category code should not be empty or null");
             } else {
-                pc = productManager.retrieveProductCategoryByCode(toValidate.getCategoryCode());
+                pc = productManager.retrieveProductCategory(toValidate.getCategoryCode());
                 if (pc == null) {
                     errors.add("No product category belongs to the code " + toValidate.getCategoryCode() + " has been found.");
                 }
@@ -56,7 +56,7 @@ public class CategoryTaxValidator implements Validator<CategoryTax, ProductCateg
                     if (StringUtils.isNullOrEmpty(c)) {
                         errors.add("A tax code should not be null or empty.");
                     } else {
-                        final Tax t = taxManager.retrieveTaxByCode(c);
+                        final Tax t = taxManager.retrieveTax(c);
                         if (t == null) {
                             errors.add("No Tax related to the code " + c + " has been found");
                         }
@@ -65,7 +65,7 @@ public class CategoryTaxValidator implements Validator<CategoryTax, ProductCateg
             }
             if (errors.isEmpty()) {
                 final List<Tax> taxes = toValidate.getTaxCodes().stream().map(c -> {
-                    return taxManager.retrieveTaxByCode(c);
+                    return taxManager.retrieveTax(c);
                 }).collect(Collectors.toList());
                 pc.getTaxes().addAll(taxes);
             }

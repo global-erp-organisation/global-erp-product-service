@@ -60,12 +60,12 @@ public class ProductService {
             LOGGER.error("The product category code should not be null or empty.");
             return ResponseEntity.badRequest().body("The product category code should not be null or empty.");
         }
-        final Product exist = productManager.retrieveProductByCode(product.getProductCode());
+        final Product exist = productManager.retrieveProduct(product.getProductCode());
         if (exist != null) {
             LOGGER.error("The product with the code {} already exist in the catalog.", product.getProductCode());
             return ResponseEntity.status(HttpStatus.CONFLICT).body("The product with code " + product.getProductCode() + " already exist in the catalog.");
         }
-        final ProductCategory cp = productManager.retrieveProductCategoryByCode(categoryCode);
+        final ProductCategory cp = productManager.retrieveProductCategory(categoryCode);
         if (cp == null) {
             LOGGER.error("The product category code {} were not find in the catalog.", categoryCode);
             return ResponseEntity.badRequest().body("The product category code " + categoryCode + " were not find in the catalog.");
@@ -100,7 +100,7 @@ public class ProductService {
             LOGGER.error("The target product code should not be null or empty.");
             return ResponseEntity.badRequest().body("The target product code should not be null or empty.");
         }
-        final Product p = productManager.retrieveProductByCode(productCode);
+        final Product p = productManager.retrieveProduct(productCode);
         if (p == null) {
             LOGGER.error("The product with code {} not found in the catalog.", productCode);
             return ResponseEntity.badRequest().body("The product with the code " + productCode + " does not exist.");
@@ -129,7 +129,7 @@ public class ProductService {
             LOGGER.error("The product code should not be null or empty.");
             return ResponseEntity.badRequest().body("The target product code should not be null or empty.");
         }
-        final Product p = productManager.retrieveProductByCode(productCode);
+        final Product p = productManager.retrieveProduct(productCode);
         if (p == null) {
             LOGGER.error("The product with code {} not found in the catalog.", productCode);
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("The product with the code " + productCode + " does not exist in the catalog.");
@@ -179,7 +179,7 @@ public class ProductService {
         if (StringUtils.isNullOrEmpty(productCode)) {
             return ResponseEntity.badRequest().body("The target product code should not be null or empty.");
         }
-        final Product p = productManager.retrieveProductByCode(productCode);
+        final Product p = productManager.retrieveProduct(productCode);
         if (p == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("The product with the code " + productCode + " does not exist in the catalog.");
         }

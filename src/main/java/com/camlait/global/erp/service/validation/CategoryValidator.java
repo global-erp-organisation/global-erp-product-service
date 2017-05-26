@@ -36,11 +36,15 @@ public class CategoryValidator implements Validator<ProductCategory, ProductCate
             LOGGER.info("Product category to add received. message = [{}]", toValidate.toJson());
 
             if (!StringUtils.isNullOrEmpty(toValidate.getParentCategoryCode())) {
-                final ProductCategory parent = productManager.retrieveProductCategoryByCode(toValidate.getParentCategoryCode());
+                final ProductCategory parent = productManager.retrieveProductCategory(toValidate.getParentCategoryCode());
                 if (parent == null) {
                     errors.add("The product category code with code " + toValidate.getParentCategoryCode() + " does not exist in the catalog.");
                 } else {
-                    toValidate.addParent(parent);
+                    if (parent.isDetail()) {
+                        errors.add("The product category code with code " + toValidate.getParentCategoryCode() + " is not a regroupment category.");
+                    } else {
+                        toValidate.addParent(parent);
+                    }
                 }
             }
 

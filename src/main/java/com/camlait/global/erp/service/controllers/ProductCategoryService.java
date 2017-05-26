@@ -72,7 +72,7 @@ public class ProductCategoryService {
         if (StringUtils.isNullOrEmpty(categoryCode)) {
             return ResponseEntity.badRequest().body("The target product category code should not be null or empty.");
         }
-        final ProductCategory c = productManager.retrieveProductCategoryByCode(categoryCode);
+        final ProductCategory c = productManager.retrieveProductCategory(categoryCode);
         if (c == null) {
             return ResponseEntity.badRequest().body("The product category with the code " + categoryCode + " does not exist.");
         }
@@ -99,7 +99,7 @@ public class ProductCategoryService {
         if (StringUtils.isNullOrEmpty(categoryCode)) {
             return ResponseEntity.badRequest().body("The target product category code should not be null or empty.");
         }
-        final ProductCategory c = productManager.retrieveProductCategoryByCode(categoryCode);
+        final ProductCategory c = productManager.retrieveProductCategory(categoryCode);
         if (c == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body("The product category with the code " + categoryCode + " does not exist in the catalog.");
@@ -148,7 +148,7 @@ public class ProductCategoryService {
         if (StringUtils.isNullOrEmpty(categoryCode)) {
             return ResponseEntity.badRequest().body("The target product category code should not be null or empty.");
         }
-        final ProductCategory c = productManager.retrieveProductCategoryByCode(categoryCode);
+        final ProductCategory c = productManager.retrieveProductCategory(categoryCode);
         if (c == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body("The product category with the code " + categoryCode + " does not exist in the catalog.");

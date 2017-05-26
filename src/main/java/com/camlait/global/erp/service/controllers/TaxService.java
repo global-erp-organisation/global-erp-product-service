@@ -3,6 +3,7 @@ package com.camlait.global.erp.service.controllers;
 import static com.camlait.global.erp.domain.helper.SerializerHelper.toJson;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,7 +66,7 @@ public class TaxService {
             LOGGER.error("Bad request. errors = [{}]", Joiner.on('\n').join(errors));
             return ResponseEntity.badRequest().body(Joiner.on('\n').join(errors));
         }
-        Tax t = taxManager.retrieveTaxByCode(tax.getTaxCode());
+        Tax t = taxManager.retrieveTax(tax.getTaxCode());
         if (t != null) {
             return ResponseEntity.badRequest().body("The tax with the code " + tax.getTaxCode() + " already exist.");
         }
@@ -86,7 +87,7 @@ public class TaxService {
         if (StringUtils.isNullOrEmpty(taxCode)) {
             return ResponseEntity.badRequest().body("The target tax code should not be null or empty.");
         }
-        final Tax t = taxManager.retrieveTaxByCode(taxCode);
+        final Tax t = taxManager.retrieveTax(taxCode);
         if (t == null) {
             return ResponseEntity.badRequest().body("The tax with the code " + taxCode + " does not exist.");
         }
@@ -111,7 +112,7 @@ public class TaxService {
         if (StringUtils.isNullOrEmpty(taxCode)) {
             return ResponseEntity.badRequest().body("The target Tax code should not be null or empty.");
         }
-        final Tax t = taxManager.retrieveTaxByCode(taxCode);
+        final Tax t = taxManager.retrieveTax(taxCode);
         if (t == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("The tax with the code " + taxCode + " does not exist in the catalog.");
         }
@@ -181,7 +182,7 @@ public class TaxService {
         if (StringUtils.isNullOrEmpty(taxCode)) {
             return ResponseEntity.badRequest().body("The target tax code should not be null or empty.");
         }
-        final Tax t = taxManager.retrieveTaxByCode(taxCode);
+        final Tax t = taxManager.retrieveTax(taxCode);
         if (t == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("The tax with the code " + taxCode + " does not exist in the catalog.");
         }
@@ -189,4 +190,55 @@ public class TaxService {
         return result ? ResponseEntity.ok("The tax " + t.getTaxDescription() + " has been succesfully removed.")
                       : ResponseEntity.ok("The tax " + t.getTaxDescription() + " were not succesfully removed.");
     }
+
+    /**
+     * Dissociate a list of taxes to a given product.
+     * 
+     * @param taxIds Collection of tax ids that need to be diassociated to the product
+     * @param productId product Identifier.
+     * @return The product with associated taxes.
+     */
+    @RequestMapping(value = "product/{productId}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.PUT)
+    public ResponseEntity<String> productTaxDissociation(@RequestBody List<String> taxIds, @PathVariable String productId) {
+        if (StringUtils.isNullOrEmpty(productId)) {
+            return ResponseEntity.badRequest().body("The productId should not be null or empty");
+        }
+        final Product p = productManager.retrieveProduct(productId);
+        if (p == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("There is no product that belongs to the Id " + productId);
+        }
+        final List<Tax> toRemove = convertToTax(taxIds);
+        p.getTaxes().removeAll(toRemove);
+        productManager.updateProduct(p);
+        return ResponseEntity.ok(p.toJson());
+    }
+
+    /**
+     * Dissociate a list of taxes to a given product category.
+     * 
+     * @param taxIds Collection of tax ids that need to be diassociated to the product category
+     * @param categoryId Category Identifier.
+     * @return The product category with associated taxes.
+     */
+    @RequestMapping(value = "category/{categoryId}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.PUT)
+    public ResponseEntity<String> categoryTaxDissociation(@RequestBody List<String> taxIds, @PathVariable String categoryId) {
+        if (StringUtils.isNullOrEmpty(categoryId)) {
+            return ResponseEntity.badRequest().body("The categoryId should not be null or empty");
+        }
+        final ProductCategory c = productManager.retrieveProductCategory(categoryId);
+        if (c == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("There is no product category that belongs to the Id " + categoryId);
+        }
+        final List<Tax> toRemove = convertToTax(taxIds);
+        c.getTaxes().removeAll(toRemove);
+        productManager.updateProductCategory(c);
+        return ResponseEntity.ok(c.toJson());
+    }
+
+    private List<Tax> convertToTax(List<String> taxIds) {
+        return taxIds.stream().map(t -> {
+            return taxManager.retrieveTax(t);
+        }).filter(t -> t != null).collect(Collectors.toList());
+    }
+
 }
