@@ -198,7 +198,7 @@ public class TaxService {
      * @param productId product Identifier.
      * @return The product with associated taxes.
      */
-    @RequestMapping(value = "product/{productId}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.PUT)
+    @RequestMapping(value = "product/{productId}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.POST)
     public ResponseEntity<String> productTaxDissociation(@RequestBody List<String> taxIds, @PathVariable String productId) {
         if (StringUtils.isNullOrEmpty(productId)) {
             return ResponseEntity.badRequest().body("The productId should not be null or empty");
@@ -220,7 +220,7 @@ public class TaxService {
      * @param categoryId Category Identifier.
      * @return The product category with associated taxes.
      */
-    @RequestMapping(value = "category/{categoryId}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.PUT)
+    @RequestMapping(value = "category/{categoryId}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.POST)
     public ResponseEntity<String> categoryTaxDissociation(@RequestBody List<String> taxIds, @PathVariable String categoryId) {
         if (StringUtils.isNullOrEmpty(categoryId)) {
             return ResponseEntity.badRequest().body("The categoryId should not be null or empty");
