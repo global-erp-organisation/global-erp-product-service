@@ -35,9 +35,9 @@ public abstract class BaseEntityModel {
     private Date lastUpdatedDate;
 
     /**
-     * Merge the current entity with the one provided as parameter.
+     * Merge the current entity with the one provided as parameter using the default merging rule.
      * 
-     * @param from
+     * @param from Source entity that the current need to be merged from.
      * @return The merging object;
      * @see MergeHelper
      */

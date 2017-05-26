@@ -70,6 +70,11 @@ public class ProductService {
             LOGGER.error("The product category code {} were not find in the catalog.", categoryCode);
             return ResponseEntity.badRequest().body("The product category code " + categoryCode + " were not find in the catalog.");
         }
+        if (cp.isTotal()) {
+            LOGGER.error("The product category code {} is a regroupment category. Only detail category should be applied to a product.", categoryCode);
+            return ResponseEntity.badRequest()
+                    .body("The product category code " + categoryCode + " is a regroupment category. Only detail catgory should be applied to a product.");
+        }
         product.setCategory(cp);
         final ValidatorResult<Product> result = productValidator.validate(product);
         final List<String> errors = result.getErrors();

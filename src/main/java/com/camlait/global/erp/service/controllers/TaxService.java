@@ -65,7 +65,11 @@ public class TaxService {
             LOGGER.error("Bad request. errors = [{}]", Joiner.on('\n').join(errors));
             return ResponseEntity.badRequest().body(Joiner.on('\n').join(errors));
         }
-        final Tax t = taxManager.addTax(result.getResult());
+        Tax t = taxManager.retrieveTaxByCode(tax.getTaxCode());
+        if (t != null) {
+            return ResponseEntity.badRequest().body("The tax with the code " + tax.getTaxCode() + " already exist.");
+        }
+        t = taxManager.addTax(result.getResult());
         LOGGER.info("Tax successfully added. message = [{}]", t.toJson());
         return ResponseEntity.ok(t.toJson());
     }
@@ -116,15 +120,16 @@ public class TaxService {
 
     /**
      * Retrieve taxes from the catalog base on the given keyword.
+     * 
      * @param keyWord Keyword.
-     * <p>
-     * The key word is required.
-     * </p>
+     *            <p>
+     *            The key word is required.
+     *            </p>
      * @return The collection of taxes that match with provided conditions.
      */
     @RequestMapping(value = "keyword/{keyWord}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.GET)
     public ResponseEntity<String> taxGetByKeyWord(@PathVariable String keyWord) {
-        if (StringUtils.isNullOrEmpty(keyWord)) {
+        if (keyWord == null) {
             return ResponseEntity.badRequest().body("The key word should not be null or empty.");
         }
         final List<Tax> t = taxManager.retrieveTaxes(keyWord);
@@ -181,7 +186,7 @@ public class TaxService {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("The tax with the code " + taxCode + " does not exist in the catalog.");
         }
         final Boolean result = taxManager.removeTax(t.getTaxId());
-        return result ? ResponseEntity.ok("The product " + t.getTaxDescription() + " has been succesfully removed.")
-                      : ResponseEntity.ok("The product " + t.getTaxDescription() + " were not succesfully removed.");
+        return result ? ResponseEntity.ok("The tax " + t.getTaxDescription() + " has been succesfully removed.")
+                      : ResponseEntity.ok("The tax " + t.getTaxDescription() + " were not succesfully removed.");
     }
 }
