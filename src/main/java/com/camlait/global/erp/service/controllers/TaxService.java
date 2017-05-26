@@ -3,6 +3,7 @@ package com.camlait.global.erp.service.controllers;
 import static com.camlait.global.erp.domain.helper.SerializerHelper.toJson;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -72,7 +73,7 @@ public class TaxService {
         }
         t = taxManager.addTax(result.getResult());
         LOGGER.info("Tax successfully added. message = [{}]", t.toJson());
-        return ResponseEntity.ok(t.toJson());
+        return ResponseEntity.status(HttpStatus.CREATED).body(t.toJson());
     }
 
     /**
@@ -128,12 +129,10 @@ public class TaxService {
      *            </p>
      * @return The collection of taxes that match with provided conditions.
      */
-    @RequestMapping(value = "keyword/{keyWord}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.GET)
-    public ResponseEntity<String> taxGetByKeyWord(@PathVariable String keyWord) {
-        if (keyWord == null) {
-            return ResponseEntity.badRequest().body("The key word should not be null or empty.");
-        }
-        final List<Tax> t = taxManager.retrieveTaxes(keyWord);
+    @RequestMapping(value = {"keyword", "keyword/{keyWord}"}, produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.GET)
+    public ResponseEntity<String> taxGetByKeyWord(@PathVariable(required = false) Optional<String> keyWord) {
+        final String present = keyWord.isPresent() ? keyWord.get() : null;
+        final List<Tax> t = taxManager.retrieveTaxes(present);
         return ResponseEntity.ok(toJson(t));
     }
 

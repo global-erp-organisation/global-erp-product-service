@@ -3,6 +3,7 @@ package com.camlait.global.erp.service.controllers;
 import static com.camlait.global.erp.domain.helper.SerializerHelper.toJson;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -84,7 +85,7 @@ public class ProductService {
         }
         final Product p = productManager.addProduct(product);
         LOGGER.info("Product successfully added. message = [{}]", p.toJson());
-        return ResponseEntity.ok(p.toJson());
+        return ResponseEntity.status(HttpStatus.CREATED).body(p.toJson());
     }
 
     /**
@@ -144,12 +145,10 @@ public class ProductService {
      * @param keyWord Keyword.
      * @return The collection of products that match with provided conditions.
      */
-    @RequestMapping(value = "keyword/{keyWord}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.GET)
-    public ResponseEntity<String> productGetByKeyWord(@PathVariable String keyWord) {
-        if (StringUtils.isNullOrEmpty(keyWord)) {
-            return ResponseEntity.badRequest().body("The key word should not be null or empty.");
-        }
-        final List<Product> p = productManager.retrieveProducts(keyWord);
+    @RequestMapping(value = {"keyword", "keyword/{keyWord}"}, produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.GET)
+    public ResponseEntity<String> productGetByKeyWord(@PathVariable(required = false) Optional<String> keyWord) {
+        final String present = keyWord.isPresent() ? keyWord.get() : null;
+        final List<Product> p = productManager.retrieveProducts(present);
         return ResponseEntity.ok(toJson(p));
     }
 

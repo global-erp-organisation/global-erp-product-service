@@ -3,6 +3,7 @@ package com.camlait.global.erp.service.controllers;
 import static com.camlait.global.erp.domain.helper.SerializerHelper.toJson;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,7 +47,7 @@ public class ProductCategoryService {
      * @param categoryCode Product category code.
      * @return
      */
-    @RequestMapping( produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.POST)
+    @RequestMapping(produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.POST)
     public ResponseEntity<String> categoryAdd(@RequestBody ProductCategory category) {
         final ValidatorResult<ProductCategory> result = categoryValidator.validate(category);
         final List<String> errors = result.getErrors();
@@ -57,7 +58,7 @@ public class ProductCategoryService {
         }
         final ProductCategory pc = productManager.addProductCategory(category);
         LOGGER.info("Product category successfully added. message = [{}]", pc.toJson());
-        return ResponseEntity.ok(pc.toJson());
+        return ResponseEntity.status(HttpStatus.CREATED).body(pc.toJson());
     }
 
     /**
@@ -113,12 +114,10 @@ public class ProductCategoryService {
      * @param keyWord Keyword.
      * @return The collection of product categories that match with provided conditions.
      */
-    @RequestMapping(value = "keyword/{keyWord}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.GET)
-    public ResponseEntity<String> categoryGetByKeyWord(@PathVariable String keyWord) {
-        if (StringUtils.isNullOrEmpty(keyWord)) {
-            return ResponseEntity.badRequest().body("The keyword should not be null or empty.");
-        }
-        final List<ProductCategory> p = productManager.retrieveProductCategories(keyWord);
+    @RequestMapping(value = {"keyword", "keyword/{keyWord}"}, produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.GET)
+    public ResponseEntity<String> categoryGetByKeyWord(@PathVariable(required = false) Optional<String> keyWord) {
+        final String present = keyWord.isPresent() ? keyWord.get() : null;
+        final List<ProductCategory> p = productManager.retrieveProductCategories(present);
         return ResponseEntity.ok(toJson(p));
     }
 
