@@ -72,12 +72,4 @@ public class ProductTaxValidator implements Validator<ProductTax, Product> {
         }
         return build(errors, p);
     }
-
-    @Override
-    public ValidatorResult<Product> build(List<String> errors, Product result) {
-        final ValidatorResult<Product> vr = new ValidatorResult<Product>();
-        vr.setErrors(errors);
-        vr.setResult(result);
-        return vr;
-    }
 }

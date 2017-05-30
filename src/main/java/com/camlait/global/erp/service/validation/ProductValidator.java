@@ -37,12 +37,4 @@ public class ProductValidator implements Validator<Product, Product> {
         }
         return build(errors, toValidate);
     }
-
-    @Override
-    public ValidatorResult<Product> build(List<String> errors, Product result) {
-        final ValidatorResult<Product> vr = new ValidatorResult<Product>();
-        vr.setErrors(errors);
-        vr.setResult(result);
-        return vr;
-    }
 }

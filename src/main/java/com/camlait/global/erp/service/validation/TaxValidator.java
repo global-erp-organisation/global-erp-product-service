@@ -38,12 +38,4 @@ public class TaxValidator implements Validator<Tax, Tax> {
         }
         return build(errors, toValidate);
     }
-
-    @Override
-    public ValidatorResult<Tax> build(List<String> errors, Tax result) {
-        final ValidatorResult<Tax> vr = new ValidatorResult<Tax>();
-        vr.setErrors(errors);
-        vr.setResult(result);
-        return vr;
-    }
 }

@@ -72,12 +72,4 @@ public class CategoryTaxValidator implements Validator<CategoryTax, ProductCateg
         }
         return build(errors, pc);
     }
-
-    @Override
-    public ValidatorResult<ProductCategory> build(List<String> errors, ProductCategory result) {
-        final ValidatorResult<ProductCategory> vr = new ValidatorResult<ProductCategory>();
-        vr.setErrors(errors);
-        vr.setResult(result);
-        return vr;
-    }
 }

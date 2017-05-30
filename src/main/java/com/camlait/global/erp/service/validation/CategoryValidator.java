@@ -57,12 +57,4 @@ public class CategoryValidator implements Validator<ProductCategory, ProductCate
         }
         return build(errors, toValidate);
     }
-
-    @Override
-    public ValidatorResult<ProductCategory> build(List<String> errors, ProductCategory result) {
-        final ValidatorResult<ProductCategory> vr = new ValidatorResult<ProductCategory>();
-        vr.setErrors(errors);
-        vr.setResult(result);
-        return vr;
-    }
 }
