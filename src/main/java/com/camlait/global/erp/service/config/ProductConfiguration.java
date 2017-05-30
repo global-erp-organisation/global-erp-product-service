@@ -10,7 +10,7 @@ import com.camlait.global.erp.domain.config.GlobalAppConstants;
 @Configuration
 @EntityScan(basePackages = {GlobalAppConstants.DOMAIN_BASE_PACKAGE})
 @EnableJpaRepositories(basePackages = {GlobalAppConstants.DAO_BASE_PACKAGE})
-@ComponentScan(basePackages = {GlobalAppConstants.SERVICE_BASE_PACKAGE, "com.camlait.global.erp.service"})
+@ComponentScan(basePackages = {GlobalAppConstants.DELEGATE_BASE_PACKAGE, GlobalAppConstants.SERVICE_BASE_PACKAGE})
 public class ProductConfiguration {
 
 }
