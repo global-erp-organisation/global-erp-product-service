@@ -13,13 +13,17 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.amazonaws.util.StringUtils;
+import com.camlait.global.erp.controller.BaseController;
 import com.camlait.global.erp.delegate.product.ProductManager;
 import com.camlait.global.erp.delegate.tax.TaxManager;
 import com.camlait.global.erp.domain.document.business.Tax;
@@ -34,7 +38,7 @@ import com.google.common.base.Joiner;
 @CrossOrigin
 @RestController
 @RequestMapping(value = "global/v1/taxes/")
-public class TaxService {
+public class TaxService extends BaseController{
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TaxService.class);
     private final Validator<Tax, Tax> taxValidator;
@@ -59,17 +63,17 @@ public class TaxService {
      * @param tax Tax to store.
      * @return
      */
-    @RequestMapping(produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.POST)
+    @PostMapping(produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<String> taxAdd(@RequestBody Tax tax) {
         final ValidatorResult<Tax> result = taxValidator.validate(tax);
         final List<String> errors = result.getErrors();
         if (!errors.isEmpty()) {
             LOGGER.error("Bad request. errors = [{}]", Joiner.on('\n').join(errors));
-            return ResponseEntity.badRequest().body(Joiner.on('\n').join(errors));
+            return ResponseEntity.badRequest().body(genericMessage(errors.toString()));
         }
         Tax t = taxManager.retrieveTax(tax.getTaxCode());
         if (t != null) {
-            return ResponseEntity.badRequest().body("The tax with the code " + tax.getTaxCode() + " already exist.");
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(genericMessage("The tax with the code " + tax.getTaxCode() + " already exist."));
         }
         t = taxManager.addTax(result.getResult());
         LOGGER.info("Tax successfully added. message = [{}]", t.toJson());
@@ -83,20 +87,20 @@ public class TaxService {
      * @param taxCode Target tax code that need to be updated.
      * @return the updated tax.
      */
-    @RequestMapping(value = "{taxCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.PATCH)
+    @PatchMapping(value = "{taxCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<String> taxUpdate(@RequestBody Tax tax, @PathVariable String taxCode) {
         if (StringUtils.isNullOrEmpty(taxCode)) {
-            return ResponseEntity.badRequest().body("The target tax code should not be null or empty.");
+            return ResponseEntity.badRequest().body(genericMessage("The target tax code should not be null or empty."));
         }
         final Tax t = taxManager.retrieveTax(taxCode);
         if (t == null) {
-            return ResponseEntity.badRequest().body("The tax with the code " + taxCode + " does not exist.");
+            return ResponseEntity.badRequest().body(genericMessage("The tax with the code " + taxCode + " does not exist."));
         }
         Tax toUpdate = tax.merge(t);
         final ValidatorResult<Tax> result = taxValidator.validate(toUpdate);
         final List<String> errors = result.getErrors();
         if (!errors.isEmpty()) {
-            return ResponseEntity.badRequest().body(Joiner.on('\n').join(errors));
+            return ResponseEntity.badRequest().body(genericMessage(Joiner.on('\n').join(errors)));
         }
         toUpdate = taxManager.updateTax(result.getResult());
         return ResponseEntity.ok(toUpdate.toJson());
@@ -108,14 +112,14 @@ public class TaxService {
      * @param taxCode Target tax code that need to be retrieved.
      * @return the tax that belongs to the provided code.
      */
-    @RequestMapping(value = "{taxCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.GET)
+    @GetMapping(value = "{taxCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<String> taxGet(@PathVariable String taxCode) {
         if (StringUtils.isNullOrEmpty(taxCode)) {
-            return ResponseEntity.badRequest().body("The target Tax code should not be null or empty.");
+            return ResponseEntity.badRequest().body(genericMessage("The target Tax code should not be null or empty."));
         }
         final Tax t = taxManager.retrieveTax(taxCode);
         if (t == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("The tax with the code " + taxCode + " does not exist in the catalog.");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(genericMessage("The tax with the code " + taxCode + " does not exist in the catalog."));
         }
         return ResponseEntity.ok(t.toJson());
     }
@@ -129,7 +133,7 @@ public class TaxService {
      *            </p>
      * @return The collection of taxes that match with provided conditions.
      */
-    @RequestMapping(value = {"keyword", "keyword/{keyWord}"}, produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.GET)
+    @GetMapping(value = {"keyword", "keyword/{keyWord}"}, produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<String> taxGetByKeyWord(@PathVariable(required = false) Optional<String> keyWord) {
         final String present = keyWord.isPresent() ? keyWord.get() : null;
         final List<Tax> t = taxManager.retrieveTaxes(present);
@@ -142,12 +146,12 @@ public class TaxService {
      * @param categoryTax Object that group a product code to a list of tax code..
      * @return The product category with associated taxes.
      */
-    @RequestMapping(value = "category", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.POST)
+    @PostMapping(value = "category", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<String> categoryTaxAssociation(@RequestBody CategoryTax categoryTax) {
         final ValidatorResult<ProductCategory> result = categoryTaxValidator.validate(categoryTax);
         final List<String> errors = result.getErrors();
         if (!errors.isEmpty()) {
-            return ResponseEntity.badRequest().body(Joiner.on('\n').join(errors));
+            return ResponseEntity.badRequest().body(genericMessage(errors.toString()));
         }
         final ProductCategory c = productManager.updateProductCategory(result.getResult());
         return ResponseEntity.ok(c.toJson());
@@ -159,12 +163,12 @@ public class TaxService {
      * @param productTaxes Object that group a product code to a list of tax code..
      * @return The product with associated taxes.
      */
-    @RequestMapping(value = "product", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.POST)
+    @PostMapping(value = "product", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<String> productTaxAssociation(@RequestBody ProductTax productTaxes) {
         final ValidatorResult<Product> result = productTaxValidator.validate(productTaxes);
         final List<String> errors = result.getErrors();
         if (!errors.isEmpty()) {
-            return ResponseEntity.badRequest().body(Joiner.on('\n').join(errors));
+            return ResponseEntity.badRequest().body(genericMessage(errors.toString()));
         }
         final Product p = productManager.updateProduct(result.getResult());
         return ResponseEntity.ok(p.toJson());
@@ -176,18 +180,18 @@ public class TaxService {
      * @param taxCode Target product code that need to be deleted.
      * @return
      */
-    @RequestMapping(value = "{taxCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.DELETE)
+    @DeleteMapping(value = "{taxCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<String> taxDelete(@PathVariable String taxCode) {
         if (StringUtils.isNullOrEmpty(taxCode)) {
-            return ResponseEntity.badRequest().body("The target tax code should not be null or empty.");
+            return ResponseEntity.badRequest().body(genericMessage("The target tax code should not be null or empty."));
         }
         final Tax t = taxManager.retrieveTax(taxCode);
         if (t == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("The tax with the code " + taxCode + " does not exist in the catalog.");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(genericMessage("The tax with the code " + taxCode + " does not exist in the catalog."));
         }
         final Boolean result = taxManager.removeTax(t.getTaxId());
-        return result ? ResponseEntity.ok("The tax " + t.getTaxDescription() + " has been succesfully removed.")
-                      : ResponseEntity.ok("The tax " + t.getTaxDescription() + " were not succesfully removed.");
+        return result ? ResponseEntity.ok(genericMessage("The tax " + t.getTaxDescription() + " has been succesfully removed."))
+                      : ResponseEntity.ok(genericMessage("The tax " + t.getTaxDescription() + " were not succesfully removed."));
     }
 
     /**
@@ -197,14 +201,14 @@ public class TaxService {
      * @param productId product Identifier.
      * @return The product with associated taxes.
      */
-    @RequestMapping(value = "product/{productId}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.POST)
+    @PostMapping(value = "product/{productId}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<String> productTaxDissociation(@RequestBody List<String> taxIds, @PathVariable String productId) {
         if (StringUtils.isNullOrEmpty(productId)) {
-            return ResponseEntity.badRequest().body("The productId should not be null or empty");
+            return ResponseEntity.badRequest().body(genericMessage("The productId should not be null or empty"));
         }
         final Product p = productManager.retrieveProduct(productId);
         if (p == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("There is no product that belongs to the Id " + productId);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(genericMessage("There is no product that belongs to the Id " + productId));
         }
         final List<Tax> toRemove = convertToTax(taxIds);
         p.getTaxes().removeAll(toRemove);
@@ -219,14 +223,14 @@ public class TaxService {
      * @param categoryId Category Identifier.
      * @return The product category with associated taxes.
      */
-    @RequestMapping(value = "category/{categoryId}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.POST)
+    @PostMapping(value = "category/{categoryId}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<String> categoryTaxDissociation(@RequestBody List<String> taxIds, @PathVariable String categoryId) {
-        if (StringUtils.isNullOrEmpty(categoryId)) {
-            return ResponseEntity.badRequest().body("The categoryId should not be null or empty");
+        if (StringUtils.isNullOrEmpty(categoryId)) {          
+            return ResponseEntity.badRequest().body(genericMessage("The categoryId should not be null or empty"));
         }
         final ProductCategory c = productManager.retrieveProductCategory(categoryId);
         if (c == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("There is no product category that belongs to the Id " + categoryId);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(genericMessage("There is no product category that belongs to the Id " + categoryId));
         }
         final List<Tax> toRemove = convertToTax(taxIds);
         c.getTaxes().removeAll(toRemove);

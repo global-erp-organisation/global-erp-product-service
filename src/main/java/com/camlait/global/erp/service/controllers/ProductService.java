@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.amazonaws.util.StringUtils;
+import com.camlait.global.erp.controller.BaseController;
 import com.camlait.global.erp.delegate.product.ProductManager;
 import com.camlait.global.erp.domain.product.Product;
 import com.camlait.global.erp.domain.product.ProductCategory;
@@ -36,7 +37,7 @@ import com.google.common.base.Joiner;
 @CrossOrigin
 @RestController
 @RequestMapping(value = "global/v1/products/")
-public class ProductService {
+public class ProductService extends BaseController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ProductService.class);
     private final ProductManager productManager;
@@ -59,29 +60,29 @@ public class ProductService {
     public ResponseEntity<String> productAdd(@RequestBody Product product, @PathVariable String categoryCode) {
         if (StringUtils.isNullOrEmpty(categoryCode)) {
             LOGGER.error("The product category code should not be null or empty.");
-            return ResponseEntity.badRequest().body("The product category code should not be null or empty.");
+            return ResponseEntity.badRequest().body(genericMessage("The product category code should not be null or empty."));
         }
         final Product exist = productManager.retrieveProduct(product.getProductCode());
         if (exist != null) {
             LOGGER.error("The product with the code {} already exist in the catalog.", product.getProductCode());
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("The product with code " + product.getProductCode() + " already exist in the catalog.");
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(genericMessage("The product with code " + product.getProductCode() + " already exist in the catalog."));
         }
         final ProductCategory cp = productManager.retrieveProductCategory(categoryCode);
         if (cp == null) {
             LOGGER.error("The product category code {} were not find in the catalog.", categoryCode);
-            return ResponseEntity.badRequest().body("The product category code " + categoryCode + " were not find in the catalog.");
+            return ResponseEntity.badRequest().body(genericMessage("The product category code " + categoryCode + " were not find in the catalog."));
         }
         if (cp.isTotal()) {
             LOGGER.error("The product category code {} is a regroupment category. Only detail category should be applied to a product.", categoryCode);
             return ResponseEntity.badRequest()
-                    .body("The product category code " + categoryCode + " is a regroupment category. Only detail catgory should be applied to a product.");
+                    .body(genericMessage("The product category code " + categoryCode + " is a regroupment category. Only detail catgory should be applied to a product."));
         }
         product.setCategory(cp);
         final ValidatorResult<Product> result = productValidator.validate(product);
         final List<String> errors = result.getErrors();
         if (!errors.isEmpty()) {
             LOGGER.error("Bad request. errors = [{}]", Joiner.on('\n').join(errors));
-            return ResponseEntity.badRequest().body(Joiner.on('\n').join(errors));
+            return ResponseEntity.badRequest().body(genericMessage(errors.toString()));
         }
         final Product p = productManager.addProduct(product);
         LOGGER.info("Product successfully added. message = [{}]", p.toJson());
@@ -99,19 +100,19 @@ public class ProductService {
     public ResponseEntity<String> productUpdate(@RequestBody Product product, @PathVariable String productCode) {
         if (StringUtils.isNullOrEmpty(productCode)) {
             LOGGER.error("The target product code should not be null or empty.");
-            return ResponseEntity.badRequest().body("The target product code should not be null or empty.");
+            return ResponseEntity.badRequest().body(genericMessage("The target product code should not be null or empty."));
         }
         final Product p = productManager.retrieveProduct(productCode);
         if (p == null) {
             LOGGER.error("The product with code {} not found in the catalog.", productCode);
-            return ResponseEntity.badRequest().body("The product with the code " + productCode + " does not exist.");
+            return ResponseEntity.badRequest().body(genericMessage("The product with the code " + productCode + " does not exist."));
         }
         final Product toUpdate = product.merge(p);
         final ValidatorResult<Product> result = productValidator.validate(toUpdate);
         final List<String> errors = result.getErrors();
         if (!errors.isEmpty()) {
             LOGGER.error("Bad request. errors = [{}]", Joiner.on('\n').join(errors));
-            return ResponseEntity.badRequest().body(Joiner.on('\n').join(errors));
+            return ResponseEntity.badRequest().body(genericMessage(errors.toString()));
         }
         productManager.updateProduct(toUpdate);
         LOGGER.info("Product successfully updated. message = [{}]", toUpdate.toJson());
@@ -128,12 +129,12 @@ public class ProductService {
     public ResponseEntity<String> productGet(@PathVariable String productCode) {
         if (StringUtils.isNullOrEmpty(productCode)) {
             LOGGER.error("The product code should not be null or empty.");
-            return ResponseEntity.badRequest().body("The target product code should not be null or empty.");
+            return ResponseEntity.badRequest().body(genericMessage("The target product code should not be null or empty."));
         }
         final Product p = productManager.retrieveProduct(productCode);
         if (p == null) {
             LOGGER.error("The product with code {} not found in the catalog.", productCode);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("The product with the code " + productCode + " does not exist in the catalog.");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(genericMessage("The product with the code " + productCode + " does not exist in the catalog."));
         }
         LOGGER.info("Product successfully retrieved. message = [{}]", p.toJson());
         return ResponseEntity.ok(p.toJson());
@@ -161,7 +162,7 @@ public class ProductService {
     @RequestMapping(value = "category/{categoryCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.GET)
     public ResponseEntity<String> productGetByCategory(@PathVariable String categoryCode) {
         if (StringUtils.isNullOrEmpty(categoryCode)) {
-            return ResponseEntity.badRequest().body("The target category product code should not be null or empty.");
+            return ResponseEntity.badRequest().body(genericMessage("The target category product code should not be null or empty."));
         }
         final List<Product> products = productManager.retrieveProductByCategory(categoryCode);
         return ResponseEntity.ok(toJson(products));
@@ -176,14 +177,14 @@ public class ProductService {
     @RequestMapping(value = "{productCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.DELETE)
     public ResponseEntity<String> productDelete(@PathVariable String productCode) {
         if (StringUtils.isNullOrEmpty(productCode)) {
-            return ResponseEntity.badRequest().body("The target product code should not be null or empty.");
+            return ResponseEntity.badRequest().body(genericMessage("The target product code should not be null or empty."));
         }
         final Product p = productManager.retrieveProduct(productCode);
         if (p == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("The product with the code " + productCode + " does not exist in the catalog.");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(genericMessage("The product with the code " + productCode + " does not exist in the catalog."));
         }
         final Boolean result = productManager.removeProduct(p.getProductId());
-        return result ? ResponseEntity.ok("The product " + p.getProductDescription() + " has been succesfully removed.")
-                      : ResponseEntity.ok("The product " + p.getProductDescription() + " were not succesfully removed.");
+        return result ? ResponseEntity.ok(genericMessage("The product " + p.getProductDescription() + " has been succesfully removed."))
+                      : ResponseEntity.ok(genericMessage("The product " + p.getProductDescription() + " were not succesfully removed."));
     }
 }

@@ -12,23 +12,29 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.amazonaws.util.StringUtils;
+import com.camlait.global.erp.controller.BaseController;
 import com.camlait.global.erp.delegate.product.ProductManager;
 import com.camlait.global.erp.domain.product.ProductCategory;
 import com.camlait.global.erp.validation.Validator;
 import com.camlait.global.erp.validation.ValidatorResult;
 import com.google.common.base.Joiner;
 
+import io.swagger.annotations.ApiOperation;
+
 @CrossOrigin
 @RestController
 @RequestMapping(value = "global/v1/categories/")
-public class ProductCategoryService {
+public class ProductCategoryService extends BaseController{
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ProductCategoryService.class);
     private final ProductManager productManager;
@@ -40,6 +46,8 @@ public class ProductCategoryService {
         this.categoryValidator = categoryValidator;
     }
 
+    
+    
     /**
      * Add a product category to the catalog.
      * 
@@ -47,14 +55,19 @@ public class ProductCategoryService {
      * @param categoryCode Product category code.
      * @return
      */
-    @RequestMapping(produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.POST)
+    @ApiOperation(httpMethod = "POST", 
+            value = "Store a product category into the catalog", 
+            notes="Resource that store the provided product category into the catalog.",
+            response = ProductCategory.class, 
+            nickname="categoryAdd")
+    @PostMapping(produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<String> categoryAdd(@RequestBody ProductCategory category) {
         final ValidatorResult<ProductCategory> result = categoryValidator.validate(category);
         final List<String> errors = result.getErrors();
 
         if (!errors.isEmpty()) {
             LOGGER.error("Bad request. errors = [{}]", Joiner.on('\n').join(errors));
-            return ResponseEntity.badRequest().body(Joiner.on('\n').join(errors));
+            return ResponseEntity.badRequest().body(genericMessage(errors.toString()));
         }
         final ProductCategory pc = productManager.addProductCategory(category);
         LOGGER.info("Product category successfully added. message = [{}]", pc.toJson());
@@ -68,22 +81,21 @@ public class ProductCategoryService {
      * @param categoryCode Target product category code that need to be updated.
      * @return the updated product category.
      */
-    @RequestMapping(value = "{categoryCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.PUT)
+    @PutMapping(value = "{categoryCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<String> categoryUpdate(@RequestBody ProductCategory category, @PathVariable String categoryCode) {
         if (StringUtils.isNullOrEmpty(categoryCode)) {
-            return ResponseEntity.badRequest().body("The target product category code should not be null or empty.");
+            return ResponseEntity.badRequest().body(genericMessage("The target product category code should not be null or empty."));
         }
         final ProductCategory c = productManager.retrieveProductCategory(categoryCode);
         if (c == null) {
-            return ResponseEntity.badRequest().body("The product category with the code " + categoryCode + " does not exist.");
+            return ResponseEntity.badRequest().body(genericMessage("The product category with the code " + categoryCode + " does not exist."));
         }
         ProductCategory toUpdate = category.merge(c);
-
         final ValidatorResult<ProductCategory> result = categoryValidator.validate(toUpdate);
         final List<String> errors = result.getErrors();
 
         if (!errors.isEmpty()) {
-            return ResponseEntity.badRequest().body(Joiner.on('\n').join(errors));
+            return ResponseEntity.badRequest().body(genericMessage(errors.toString()));
         }
         productManager.updateProductCategory(toUpdate);
         return ResponseEntity.ok(toUpdate.toJson());
@@ -95,15 +107,15 @@ public class ProductCategoryService {
      * @param categoryCode Target product category code that need to be retrieved.
      * @return the product category that belongs to the provided code.
      */
-    @RequestMapping(value = "{categoryCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.GET)
+    @GetMapping(value = "{categoryCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<String> categoryGet(@PathVariable String categoryCode) {
         if (StringUtils.isNullOrEmpty(categoryCode)) {
-            return ResponseEntity.badRequest().body("The target product category code should not be null or empty.");
-        }
+            return ResponseEntity.badRequest().body(genericMessage("The target product category code should not be null or empty."));
+         }
         final ProductCategory c = productManager.retrieveProductCategory(categoryCode);
         if (c == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("The product category with the code " + categoryCode + " does not exist in the catalog.");
+                    .body(genericMessage("The product category with the code " + categoryCode + " does not exist in the catalog."));
         }
         return ResponseEntity.ok(c.init().toJson());
     }
@@ -114,7 +126,7 @@ public class ProductCategoryService {
      * @param keyWord Keyword.
      * @return The collection of product categories that match with provided conditions.
      */
-    @RequestMapping(value = {"keyword", "keyword/{keyWord}"}, produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.GET)
+    @GetMapping(value = {"keyword", "keyword/{keyWord}"}, produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<String> categoryGetByKeyWord(@PathVariable(required = false) Optional<String> keyWord) {
         final String present = keyWord.isPresent() ? keyWord.get() : null;
         final List<ProductCategory> p = productManager.retrieveProductCategories(present);
@@ -130,7 +142,7 @@ public class ProductCategoryService {
     @RequestMapping(value = "category/{parentCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.GET)
     public ResponseEntity<String> categoryGetByParent(@PathVariable String parentCode) {
         if (StringUtils.isNullOrEmpty(parentCode)) {
-            return ResponseEntity.badRequest().body("The target parent category code should not be null or empty.");
+            return ResponseEntity.badRequest().body(genericMessage("The target parent category code should not be null or empty."));
         }
         final List<ProductCategory> categories = productManager.retrieveCategoriesByParent(parentCode);
         return ResponseEntity.ok(toJson(categories));
@@ -145,15 +157,15 @@ public class ProductCategoryService {
     @RequestMapping(value = "{categoryCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE, method = RequestMethod.DELETE)
     public ResponseEntity<String> categoryDelete(@PathVariable String categoryCode) {
         if (StringUtils.isNullOrEmpty(categoryCode)) {
-            return ResponseEntity.badRequest().body("The target product category code should not be null or empty.");
+            return ResponseEntity.badRequest().body(genericMessage("The target product category code should not be null or empty."));
         }
         final ProductCategory c = productManager.retrieveProductCategory(categoryCode);
         if (c == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("The product category with the code " + categoryCode + " does not exist in the catalog.");
+                    .body(genericMessage("The product category with the code " + categoryCode + " does not exist in the catalog."));
         }
         final Boolean result = productManager.removeProductCategory(c.getProductCategoryId());
-        return result ? ResponseEntity.ok("The product " + c.getCategoryDescription() + " has been succesfully removed.")
-                      : ResponseEntity.ok("The product " + c.getCategoryDescription() + " were not succesfully removed.");
+        return result ? ResponseEntity.ok(genericMessage("The product " + c.getCategoryDescription() + " has been succesfully removed."))
+                      : ResponseEntity.ok(genericMessage("The product " + c.getCategoryDescription() + " were not succesfully removed."));
     }
 }
