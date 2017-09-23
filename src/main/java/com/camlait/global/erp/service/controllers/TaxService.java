@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -23,7 +24,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.amazonaws.util.StringUtils;
-import com.camlait.global.erp.controller.BaseController;
 import com.camlait.global.erp.delegate.product.ProductManager;
 import com.camlait.global.erp.delegate.tax.TaxManager;
 import com.camlait.global.erp.domain.document.business.Tax;
@@ -33,8 +33,10 @@ import com.camlait.global.erp.service.domain.CategoryTax;
 import com.camlait.global.erp.service.domain.ProductTax;
 import com.camlait.global.erp.validation.Validator;
 import com.camlait.global.erp.validation.ValidatorResult;
+import com.codahale.metrics.annotation.Metric;
 import com.google.common.base.Joiner;
 
+@RefreshScope
 @CrossOrigin
 @RestController
 @RequestMapping(value = "global/v1/taxes/")
@@ -63,6 +65,7 @@ public class TaxService extends BaseController{
      * @param tax Tax to store.
      * @return
      */
+    @Metric(name="taxAdd")
     @PostMapping(produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<String> taxAdd(@RequestBody Tax tax) {
         final ValidatorResult<Tax> result = taxValidator.validate(tax);
@@ -87,6 +90,7 @@ public class TaxService extends BaseController{
      * @param taxCode Target tax code that need to be updated.
      * @return the updated tax.
      */
+    @Metric(name="taxUpdate")
     @PatchMapping(value = "{taxCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<String> taxUpdate(@RequestBody Tax tax, @PathVariable String taxCode) {
         if (StringUtils.isNullOrEmpty(taxCode)) {
@@ -112,6 +116,7 @@ public class TaxService extends BaseController{
      * @param taxCode Target tax code that need to be retrieved.
      * @return the tax that belongs to the provided code.
      */
+    @Metric(name="taxGet")
     @GetMapping(value = "{taxCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<String> taxGet(@PathVariable String taxCode) {
         if (StringUtils.isNullOrEmpty(taxCode)) {
@@ -133,6 +138,7 @@ public class TaxService extends BaseController{
      *            </p>
      * @return The collection of taxes that match with provided conditions.
      */
+    @Metric(name="taxGetByKeyWord")
     @GetMapping(value = {"keyword", "keyword/{keyWord}"}, produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<String> taxGetByKeyWord(@PathVariable(required = false) Optional<String> keyWord) {
         final String present = keyWord.isPresent() ? keyWord.get() : null;
@@ -146,6 +152,7 @@ public class TaxService extends BaseController{
      * @param categoryTax Object that group a product code to a list of tax code..
      * @return The product category with associated taxes.
      */
+    @Metric(name="categoryTaxAssociation")
     @PostMapping(value = "category", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<String> categoryTaxAssociation(@RequestBody CategoryTax categoryTax) {
         final ValidatorResult<ProductCategory> result = categoryTaxValidator.validate(categoryTax);
@@ -163,6 +170,7 @@ public class TaxService extends BaseController{
      * @param productTaxes Object that group a product code to a list of tax code..
      * @return The product with associated taxes.
      */
+    @Metric(name="productTaxAssociation")
     @PostMapping(value = "product", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<String> productTaxAssociation(@RequestBody ProductTax productTaxes) {
         final ValidatorResult<Product> result = productTaxValidator.validate(productTaxes);
@@ -180,6 +188,7 @@ public class TaxService extends BaseController{
      * @param taxCode Target product code that need to be deleted.
      * @return
      */
+    @Metric(name="taxDelete")
     @DeleteMapping(value = "{taxCode}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<String> taxDelete(@PathVariable String taxCode) {
         if (StringUtils.isNullOrEmpty(taxCode)) {
@@ -201,6 +210,7 @@ public class TaxService extends BaseController{
      * @param productId product Identifier.
      * @return The product with associated taxes.
      */
+    @Metric(name="productTaxDissociation")
     @PostMapping(value = "product/{productId}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<String> productTaxDissociation(@RequestBody List<String> taxIds, @PathVariable String productId) {
         if (StringUtils.isNullOrEmpty(productId)) {
@@ -223,6 +233,7 @@ public class TaxService extends BaseController{
      * @param categoryId Category Identifier.
      * @return The product category with associated taxes.
      */
+    @Metric(name="categoryTaxDissociation")
     @PostMapping(value = "category/{categoryId}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     public ResponseEntity<String> categoryTaxDissociation(@RequestBody List<String> taxIds, @PathVariable String categoryId) {
         if (StringUtils.isNullOrEmpty(categoryId)) {          

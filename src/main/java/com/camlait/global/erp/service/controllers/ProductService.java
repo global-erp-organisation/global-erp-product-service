@@ -8,6 +8,7 @@ import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -19,10 +20,10 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.amazonaws.util.StringUtils;
-import com.camlait.global.erp.controller.BaseController;
 import com.camlait.global.erp.delegate.product.ProductManager;
 import com.camlait.global.erp.domain.product.Product;
 import com.camlait.global.erp.domain.product.ProductCategory;
+import com.camlait.global.erp.service.controllers.BaseController;
 import com.camlait.global.erp.validation.Validator;
 import com.camlait.global.erp.validation.ValidatorResult;
 import com.google.common.base.Joiner;
@@ -34,6 +35,8 @@ import com.google.common.base.Joiner;
  * 
  * @author Martin Blaise Signe.
  */
+
+@RefreshScope
 @CrossOrigin
 @RestController
 @RequestMapping(value = "global/v1/products/")
